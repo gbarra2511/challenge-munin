@@ -1,4 +1,4 @@
-# Challenge MuninAI — Mini-WFM
+# Challenge MuninAI: Mini-WFM
 
 > Um produto inteiro, do zero, em uma semana. A gente quer ver você construir.
 
@@ -7,8 +7,8 @@
 A MuninAI é uma plataforma de **Workforce Management para hospitais**. A dor é
 simples: hospital precisa preencher escala de plantonistas, hoje isso é feito
 no telefone e no WhatsApp pessoal da coordenadora, e quando dá buraco
-ninguém atende. A gente automatiza isso — escala, oferta, aceite, troca,
-check-in — com web app pra coordenação e um agente conversacional pros
+ninguém atende. A gente automatiza isso (escala, oferta, aceite, troca,
+check-in) com web app pra coordenação e um agente conversacional pros
 médicos.
 
 Seu desafio é construir uma versão muito reduzida disso, em uma semana, sozinho.
@@ -22,8 +22,8 @@ precisa preencher ~40 plantões. Hoje liga um por um. Você vai construir um
 sistema onde:
 
 1. A coordenadora cadastra plantões disponíveis ("Clínica Médica, sábado
-   19h–07h, R$ 1.500").
-2. O sistema **oferta o plantão em batches** — manda pra 3 médicos por vez,
+   19h às 07h, R$ 1.500").
+2. O sistema **oferta o plantão em batches**: manda pra 3 médicos por vez,
    espera 30 min, se ninguém aceitar manda pros próximos 3, e por aí vai.
 3. O **primeiro médico que aceitar fica com o plantão**. Os outros recebem
    "plantão preenchido, obrigado".
@@ -42,44 +42,51 @@ médico.
 
 API REST (ou GraphQL, sua escolha) com os recursos:
 
-- **Auth** — login simples por e-mail/senha. Dois papéis: `coordenador` e
+- **Auth**: login simples por e-mail/senha. Dois papéis: `coordenador` e
   `medico`. JWT serve.
-- **Médicos** — CRUD básico (nome, especialidade, telefone, hospital).
-- **Plantões** — CRUD + endpoint pra abrir oferta (`POST /shifts/:id/offer`)
+- **Médicos**: CRUD básico (nome, especialidade, telefone, hospital).
+- **Plantões**: CRUD + endpoint pra abrir oferta (`POST /shifts/:id/offer`)
   com a lista de médicos elegíveis.
-- **Ofertas** — `POST /offers/:id/accept` e `POST /offers/:id/decline`.
+- **Ofertas**: `POST /offers/:id/accept` e `POST /offers/:id/decline`.
 - **Listagem de plantões disponíveis** pra um médico logado.
 
-### 2. Worker / cron
+### 2. Job de avanço do pipeline
 
-Um processo em background que:
+Um endpoint protegido (ex: `POST /jobs/tick`) que, ao ser chamado, faz:
 
 - Avança o pipeline de ofertas (libera o próximo batch quando o anterior
   expira sem aceite).
 - Marca ofertas como `expired`.
 - Escala pra coordenadora quando o plantão tá perto e ninguém pegou.
 
-Pode ser APScheduler, Celery beat, BullMQ, `setInterval` num worker
-Node, cron do sistema chamando endpoint, ou Vercel Cron. **Importante: não
-pode rodar dentro do request HTTP.**
+Como você dispara esse endpoint periodicamente é livre. Opções
+simples que funcionam:
+
+- GitHub Actions com `schedule` (cron grátis, dispara `curl` no endpoint).
+- cron-job.org / EasyCron (HTTP request agendada, free tier suficiente).
+- Tick "lazy": avança o pipeline sempre que alguém abre o dashboard.
+  Funciona pro escopo do desafio.
+- Chamada manual durante a call de revisão.
+
+Vale também rodar local com APScheduler / `setInterval` durante dev.
 
 ### 3. SPA
 
 Frontend single-page com pelo menos estas telas:
 
 #### Coordenadora
-- **Dashboard** — KPIs (plantões abertos, ofertados, preenchidos, em risco
+- **Dashboard**: KPIs (plantões abertos, ofertados, preenchidos, em risco
   de buraco). Pode ter gráfico simples (próximos 7 dias).
-- **Calendário ou Kanban de plantões** — visão da semana com status
+- **Calendário ou Kanban de plantões**: visão da semana com status
   colorido por plantão.
-- **Detalhe do plantão** — quem foi ofertado, em que ordem, quem aceitou,
+- **Detalhe do plantão**: quem foi ofertado, em que ordem, quem aceitou,
   quem recusou, timeline.
-- **Criar plantão** — formulário.
+- **Criar plantão**: formulário.
 
 #### Médico
-- **Minhas ofertas** — lista das ofertas ativas pra ele, com countdown
+- **Minhas ofertas**: lista das ofertas ativas pra ele, com countdown
   ("aceitar até em 12 min").
-- **Meus plantões aceitos** — calendário.
+- **Meus plantões aceitos**: calendário.
 - **Histórico**.
 
 Não precisa ser bonita-bonita, mas precisa ser **um produto, não um
@@ -87,13 +94,13 @@ formulário do Bootstrap 3**. Use componentes prontos (shadcn/ui, Mantine,
 Chakra). Cuide de:
 
 - Loading states (skeleton, não spinner gigante no meio da tela).
-- Empty states ("você ainda não tem plantões — abra um aqui").
+- Empty states ("você ainda não tem plantões, abra um aqui").
 - Toasts pra feedback de ação (`sonner` resolve).
-- Responsividade mínima — funcionar no celular do médico.
+- Responsividade mínima: funcionar no celular do médico.
 
 ### 4. Banco
 
-PostgreSQL com migrações versionadas (Alembic, Prisma, Drizzle, Knex —
+PostgreSQL com migrações versionadas (Alembic, Prisma, Drizzle, Knex,
 qualquer). Não usar SQLite a não ser que tenha justificativa muito boa
 no README.
 
@@ -101,28 +108,27 @@ no README.
 
 A ideia é a gente conseguir abrir o app no navegador e clicar nas coisas
 sem precisar subir nada local. Faça o melhor que conseguir pra deixar
-acessível — se travar no deploy, documente o que tentou e a gente
-combina.
+acessível. Se travar no deploy, documente o que tentou e a gente combina.
 
-**Stack de deploy sugerida** (é o que a Munin usa em produção, então é
-o que a gente sabe ajudar se precisar):
+**Stack sugerida:**
 
 - **Frontend Next.js → Vercel.** Importa o repo, ele detecta sozinho.
 - **Backend Flask/FastAPI → Vercel** (serverless, via `api/index.py` +
-  `vercel.json`). Se preferir Railway / Fly.io / Render, fique à vontade.
-- **Banco PostgreSQL → Supabase** (free tier resolve). Alternativa: Neon
-  ou Railway.
-- **Cron** → Vercel Cron Jobs no `vercel.json` chamando endpoint
-  protegido por token. Ou cron do Railway/Render se for por lá.
+  `vercel.json`). Railway, Fly.io ou Render também funcionam.
+- **Banco PostgreSQL → Supabase** (free tier resolve). Neon e Railway
+  também rolam.
+- **Disparador do tick**: GitHub Actions com `schedule`, cron-job.org,
+  ou tick lazy no abrir do dashboard. Veja a seção do job de pipeline
+  pra detalhes.
 
 **O que esperamos ver no link:**
 
 - Login funciona com as credenciais que você documentar.
-- Seed rodou — já tem médicos e plantões pra brincar.
+- Seed rodou, já tem médicos e plantões pra brincar.
 - Frontend e backend conversando (sem CORS quebrado).
 
 Se você só conseguir subir o frontend mas o backend ficou local, ou
-vice-versa — entrega assim mesmo, explica no README, e a gente sobe local
+vice-versa, entrega assim mesmo, explica no README, e a gente sobe local
 pra avaliar. Não é o ideal, mas não é o fim do mundo.
 
 ### 6. README do projeto
@@ -133,7 +139,7 @@ O `README.md` que **você** vai escrever deve ter:
 - Como rodar localmente (opcional, mas recomendado pra quem for revisar).
 - Diagrama de arquitetura (Mermaid serve).
 - State machine do plantão.
-- Decisões de arquitetura — qual trade-off você fez e por quê.
+- Decisões de arquitetura: qual trade-off você fez e por quê.
 - O que ficou faltando e o que faria com mais 1 semana.
 - GIF curto ou prints das principais telas.
 
@@ -141,7 +147,7 @@ O `README.md` que **você** vai escrever deve ter:
 
 Pelo menos **5 testes automatizados nos fluxos críticos**, com foco em:
 
-- Race condition no aceite (dois médicos clicam ao mesmo tempo — só um
+- Race condition no aceite (dois médicos clicam ao mesmo tempo, só um
   ganha).
 - Pipeline avançando entre batches.
 - Permissão (médico não pode ver plantão de outro hospital).
@@ -170,7 +176,7 @@ Cada oferta individual também é uma máquina pequena:
 
 **Você não precisa copiar essa exata.** Mas o sistema precisa ter estados
 explícitos no banco. Se você for resolver isso com `if` no controller,
-vai dar ruim — a gente vai ler o código.
+vai dar ruim. A gente vai ler o código.
 
 ---
 
@@ -186,7 +192,7 @@ vai dar ruim — a gente vai ler o código.
 | `shift_assignments` | id, shift_id, doctor_id, accepted_at, status |
 | `swap_requests` *(bônus)* | id, from_assignment_id, to_doctor_id, status |
 
-Sugerido, não obrigatório. Se tiver ideia melhor, melhor ainda — explique
+Sugerido, não obrigatório. Se tiver ideia melhor, melhor ainda. Explique
 no README.
 
 ---
@@ -206,7 +212,7 @@ no README.
 | Testes | pytest | Vitest, Jest |
 | Deploy bônus | Vercel (front) + Railway/Fly.io (back) | Render, Cloud Run |
 
-Se você for **muito** confortável em Python+React, fique nessa stack — você
+Se você for **muito** confortável em Python+React, fique nessa stack, você
 ganha pontos por aderência. Se for muito mais produtivo em outra, use a sua
 e justifique. **Não escolha stack que você nunca usou só pra impressionar.**
 
@@ -214,7 +220,7 @@ e justifique. **Não escolha stack que você nunca usou só pra impressionar.**
 
 ## Bônus (em ordem decrescente de impacto)
 
-### Tier 1 — vale muito
+### Tier 1: vale muito
 - **Ranking de médicos** pra ofertar primeiro pros mais prováveis de aceitar
   (especialidade + última vez que pegou plantão + taxa histórica de aceite).
   Pode ser regra simples; explique a heurística.
@@ -225,13 +231,13 @@ e justifique. **Não escolha stack que você nunca usou só pra impressionar.**
   coordenador).
 - **Domínio próprio** + HTTPS configurado.
 
-### Tier 2 — vale bastante
+### Tier 2: vale bastante
 - **Check-in/check-out** com geolocalização (Web Geolocation API) e log.
-- **Audit log** — toda mudança de estado vira evento imutável (útil pra
+- **Audit log**: toda mudança de estado vira evento imutável (útil pra
   contestação, e a gente faz isso no produto real).
 - **OpenAPI / Swagger UI** documentando a API.
 
-### Tier 3 — vibe AI engineer (opcional, mas se você tá afim 👇)
+### Tier 3: vibe AI engineer (opcional, mas se você tá afim 👇)
 - **Mini "Luis" no chat web**: agente LLM (OpenAI / Anthropic / OpenRouter)
   que conversa com o médico pelo próprio app. Tools: `listar_plantoes`,
   `aceitar`, `recusar`. Pode usar Vercel AI SDK no front e tool calling no
@@ -287,8 +293,8 @@ Pontuação 0-5 em cada eixo. Total /35.
 
 A entrega ideal é:
 
-1. **App em produção** — link `https://<seu-projeto>.vercel.app`.
-2. **API em produção** — link da API.
+1. **App em produção**: link `https://<seu-projeto>.vercel.app`.
+2. **API em produção**: link da API.
 3. **Repositório no GitHub** (público ou nos convide).
 
 No topo do `README.md` do repo, deixe pronto:
@@ -303,13 +309,13 @@ Login médico:        medico@hospital.com / 123456
 
 ### Seed
 
-Coloque **dados de seed** — ao abrir o link a gente já encontra ~30
+Coloque **dados de seed**: ao abrir o link a gente já encontra ~30
 médicos e ~10 plantões abertos. Pode ser script `seed.py` / `seed.ts`
 rodado no build, ou endpoint `POST /admin/seed` documentado no README.
 
 ### Rodar local
 
-Documente também como rodar local (`docker compose up` ou similar) — é
+Documente também como rodar local (`docker compose up` ou similar). É
 útil pra quem for revisar mexer offline e debugar.
 
 ---
@@ -317,9 +323,9 @@ Documente também como rodar local (`docker compose up` ou similar) — é
 ## Prazos
 
 - **Tempo de desafio**: 7 dias corridos a partir do envio do enunciado.
-- **Esperado por dia**: 2–4h.
+- **Esperado por dia**: 2 a 4h.
 - **Entrega**: link de repositório (GitHub público ou nos convide).
-- **Call de revisão**: 30–45 min, dividida em demo + pair-debug + Q&A sobre
+- **Call de revisão**: 30 a 45 min, dividida em demo + pair-debug + Q&A sobre
   decisões de design.
 
 ---
@@ -329,8 +335,7 @@ Documente também como rodar local (`docker compose up` ou similar) — é
 - Faça em iterações verticais: cria plantão → oferta → aceite, end-to-end,
   com tela horrorosa primeiro. Só depois bonita.
 - Pipeline de oferta é o **coração**. Comece por ele.
-- A race condition do `accept` é onde a gente vai apertar mais — pense
-  cedo.
+- A race condition do `accept` é onde a gente vai apertar mais. Pense cedo.
 - Se travar em algo por mais de 2h, **registre no README** o que você
   tentou e siga. A gente valoriza honesty.
 - Commits pequenos e descritivos contam ponto. A gente vai ler o `git log`.
@@ -341,7 +346,7 @@ Documente também como rodar local (`docker compose up` ou similar) — é
 
 **Posso usar IA pra codar?**
 Pode e a gente espera que use. Mas você precisa entender cada linha do que
-entregar — na call vamos perguntar.
+entregar. Na call vamos perguntar.
 
 **Posso usar template/boilerplate?**
 Sim. Cite no README.
@@ -349,9 +354,6 @@ Sim. Cite no README.
 **E se eu não terminar tudo?**
 Entregue o que tem, documente o que faltou, explique o que faria com mais
 tempo. Vale mais que entregar tudo meia-boca.
-
-**Posso fazer em mobile (React Native / Flutter)?**
-Pode, mas precisa ter UI de coordenadora desktop também.
 
 ---
 
