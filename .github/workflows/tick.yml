@@ -4,8 +4,11 @@ name: tick
 # endpoint protegido do backend. Ver PLANO.md §7 para o algoritmo.
 
 on:
-  schedule:
-    - cron: "*/5 * * * *"
+  # Cron desativado até o backend estar deployado e os secrets
+  # (API_URL, TICK_SECRET) configurados no repo. Reativar removendo
+  # o comentário abaixo. Por enquanto, rodar manualmente via UI.
+  # schedule:
+  #   - cron: "*/5 * * * *"
   workflow_dispatch:
 
 jobs:
