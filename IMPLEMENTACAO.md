@@ -3,7 +3,7 @@
 > Estado atual da implementação do Mini-WFM e próximos passos.
 > **Atualizar após cada feature grande. Revisar no início de cada sessão.**
 
-Última atualização: 2026-05-22
+Última atualização: 2026-05-22 (cron do tick desativado, ver §Bloqueios)
 
 ---
 
@@ -93,7 +93,10 @@
 - [ ] Backend → Fly.io (Dockerfile + `fly launch`)
 - [ ] Frontend → Vercel
 - [ ] DB → Supabase
-- [ ] GitHub Actions: cron 5min chamando `/jobs/tick` com Bearer
+- [ ] Configurar secrets `API_URL` e `TICK_SECRET` no GitHub
+- [ ] **Reativar cron do `tick.yml`** (descomentar bloco `schedule:`) —
+  está desativado desde 2026-05-22 porque estava falhando sem backend
+  e sem secrets, gerando emails de "tick failed" a cada 5 min
 
 ### 7. Seed + README (Dia 6-7)
 - [ ] `POST /admin/seed`: 1 hospital, 30 médicos, 1 coordenadora, 10 plantões
@@ -121,6 +124,9 @@
 - Docker Desktop não está instalado na máquina. Precisa instalar antes de
   rodar `docker compose up` para o Postgres local. Alternativa: Colima
   ou Postgres via Homebrew.
+- Cron do `.github/workflows/tick.yml` está **desativado** (commit
+  `c6b1652`). Só roda via `workflow_dispatch` manual. Reativar no Dia 6
+  junto com deploy — ver passo 6 acima.
 
 ---
 
