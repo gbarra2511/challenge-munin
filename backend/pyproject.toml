@@ -1,0 +1,38 @@
+[project]
+name = "munin-backend"
+version = "0.1.0"
+description = "Mini-WFM backend — Challenge MuninAI"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "flask>=3.0.3",
+    "sqlalchemy>=2.0.36",
+    "alembic>=1.14.0",
+    "psycopg[binary]>=3.2.3",
+    "pydantic>=2.9.2",
+    "pydantic-settings>=2.6.1",
+    "pyjwt>=2.9.0",
+    "bcrypt>=4.2.0",
+    "python-dotenv>=1.0.1",
+    "structlog>=24.4.0",
+    "gunicorn>=23.0.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.3",
+    "pytest-cov>=6.0.0",
+    "httpx>=0.27.2",
+    "ruff>=0.7.4",
+    "freezegun>=1.5.1",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"

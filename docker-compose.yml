@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: munin-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: munin
+      POSTGRES_PASSWORD: munin
+      POSTGRES_DB: munin
+    ports:
+      - "5432:5432"
+    volumes:
+      - munin_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U munin -d munin"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  munin_pgdata:
