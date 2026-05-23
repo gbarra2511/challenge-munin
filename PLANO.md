@@ -126,46 +126,117 @@ Regras:
 
 ```mermaid
 erDiagram
-    accounts ||--o| doctors : "1:1 (se role=medico)"
-    hospitals ||--o{ accounts : has
+    hospitals ||--o{ accounts : "tem (coord)"
     hospitals ||--o{ shifts : owns
-    doctors ||--o{ shift_offers : receives
-    shifts ||--o{ shift_offers : has
+    hospitals ||--o{ doctor_hospital_affiliations : "vincula"
+
+    accounts ||--o| doctors : "1:1 se role=medico"
+
+    doctors ||--o{ doctor_hospital_affiliations : "trabalha em"
+    doctors ||--o{ doctor_specialties : "atua como"
+    doctors ||--o{ doctor_unavailabilities : "tem"
+    doctors ||--o{ shift_offers : recebe
+    doctors ||--o{ shift_assignments : ganha
+
+    specialties ||--o{ doctor_specialties : "exercida por"
+    specialties ||--o{ shifts : "requerida em"
+
+    shifts ||--o{ shift_offers : possui
     shifts ||--o| shift_assignments : "0..1 ativo"
-    doctors ||--o{ shift_assignments : holds
-    shift_assignments ||--o{ swap_requests : "fonte"
     shifts ||--o{ audit_events : logs
+
+    shift_assignments ||--o{ swap_requests : fonte
 ```
 
 ### Tabelas
 
 ```sql
--- Identidade e autenticação
+-- ============================================================
+-- Identidade
+-- ============================================================
+CREATE EXTENSION IF NOT EXISTS citext;
+
+CREATE TABLE hospitals (
+  id    UUID PK,
+  name  TEXT NOT NULL
+);
+
 CREATE TABLE accounts (
   id            UUID PK,
   email         CITEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
   role          TEXT NOT NULL CHECK (role IN ('coordenador','medico')),
-  hospital_id   UUID REFERENCES hospitals(id),
-  created_at    TIMESTAMPTZ DEFAULT now()
+  hospital_id   UUID REFERENCES hospitals(id),  -- semântica abaixo
+  created_at    TIMESTAMPTZ DEFAULT now(),
+  -- coordenador SEMPRE tem hospital; médico NUNCA (vínculos vivem em
+  -- doctor_hospital_affiliations, não aqui).
+  CONSTRAINT account_hospital_per_role CHECK (
+    (role = 'coordenador' AND hospital_id IS NOT NULL) OR
+    (role = 'medico'      AND hospital_id IS NULL)
+  )
 );
-
-CREATE TABLE hospitals (id UUID PK, name TEXT NOT NULL);
 
 CREATE TABLE doctors (
   id           UUID PK,
   account_id   UUID UNIQUE REFERENCES accounts(id),
-  hospital_id  UUID REFERENCES hospitals(id),
   name         TEXT NOT NULL,
-  specialty    TEXT NOT NULL,
   phone        TEXT
+  -- hospital_id removido: vínculos vivem em doctor_hospital_affiliations
+  -- specialty  removida: vínculos vivem em doctor_specialties
 );
 
+-- ============================================================
+-- Especialidades: dado de referência (vem da migration, não do seed)
+-- ============================================================
+CREATE TABLE specialties (
+  id    SMALLSERIAL PK,
+  slug  TEXT UNIQUE NOT NULL,   -- 'cardiologia', 'clinica-medica'
+  name  TEXT NOT NULL           -- 'Cardiologia', 'Clínica Médica'
+);
+-- A própria migration faz op.bulk_insert das 8 especialidades-base
+-- com IDs fixos (1..8). Ver §4.7, decisão 1.
+
+-- N:M médico × especialidade
+CREATE TABLE doctor_specialties (
+  doctor_id    UUID     REFERENCES doctors(id) ON DELETE CASCADE,
+  specialty_id SMALLINT REFERENCES specialties(id),
+  PRIMARY KEY (doctor_id, specialty_id)
+);
+CREATE INDEX ON doctor_specialties(specialty_id);  -- ranking reverso
+
+-- ============================================================
+-- Vínculo médico ↔ hospital (médico plantonista trabalha em vários)
+-- ============================================================
+CREATE TABLE doctor_hospital_affiliations (
+  doctor_id    UUID REFERENCES doctors(id) ON DELETE CASCADE,
+  hospital_id  UUID REFERENCES hospitals(id),
+  status       TEXT NOT NULL DEFAULT 'active',  -- active|inactive
+  joined_at    TIMESTAMPTZ DEFAULT now(),
+  PRIMARY KEY (doctor_id, hospital_id)
+);
+CREATE INDEX ON doctor_hospital_affiliations(hospital_id, status);
+
+-- ============================================================
+-- Indisponibilidade do médico (férias, viagens, folga declarada)
+-- Tick exclui do ranking quem tem janela sobreposta com o plantão.
+-- ============================================================
+CREATE TABLE doctor_unavailabilities (
+  id         UUID PK,
+  doctor_id  UUID REFERENCES doctors(id) ON DELETE CASCADE,
+  starts_at  TIMESTAMPTZ NOT NULL,
+  ends_at    TIMESTAMPTZ NOT NULL,
+  reason     TEXT,
+  CHECK (ends_at > starts_at)
+);
+CREATE INDEX ON doctor_unavailabilities(doctor_id, starts_at, ends_at);
+
+-- ============================================================
 -- Plantões
+-- ============================================================
 CREATE TABLE shifts (
   id              UUID PK,
   hospital_id     UUID REFERENCES hospitals(id),
-  specialty       TEXT NOT NULL,
+  specialty_id    SMALLINT NOT NULL REFERENCES specialties(id),  -- era TEXT
   starts_at       TIMESTAMPTZ NOT NULL,
   ends_at         TIMESTAMPTZ NOT NULL,
   rate_cents      INTEGER NOT NULL,
@@ -174,7 +245,7 @@ CREATE TABLE shifts (
   batch_size      INTEGER NOT NULL DEFAULT 3,
   batch_window_minutes INTEGER NOT NULL DEFAULT 30,
   escalate_hours_before INTEGER NOT NULL DEFAULT 6,
-  version         INTEGER NOT NULL DEFAULT 0,  -- optimistic lock
+  version         INTEGER NOT NULL DEFAULT 0,  -- optimistic lock secundário
   created_at      TIMESTAMPTZ DEFAULT now()
 );
 
@@ -192,6 +263,8 @@ CREATE TABLE shift_offers (
 );
 
 -- Assignments — quem ficou com o plantão
+-- Obs: especialidade "usada" no aceite é INFERIDA via shifts.specialty_id.
+-- Não há specialty_used_id aqui. Ver §4.7, decisão 3 (Opção A).
 CREATE TABLE shift_assignments (
   id            UUID PK,
   shift_id      UUID REFERENCES shifts(id),
@@ -207,7 +280,9 @@ CREATE UNIQUE INDEX one_active_assignment_per_shift
   ON shift_assignments(shift_id)
   WHERE status = 'active';
 
+-- ============================================================
 -- Bônus: troca
+-- ============================================================
 CREATE TABLE swap_requests (
   id                  UUID PK,
   from_assignment_id  UUID REFERENCES shift_assignments(id),
@@ -216,23 +291,162 @@ CREATE TABLE swap_requests (
   created_at          TIMESTAMPTZ DEFAULT now()
 );
 
--- Bônus: audit log imutável
+-- ============================================================
+-- Audit log imutável
+-- ============================================================
 CREATE TABLE audit_events (
-  id          BIGSERIAL PK,
-  shift_id    UUID,
-  actor_type  TEXT,  -- system|coord|doctor
-  actor_id    UUID,
-  event_type  TEXT NOT NULL,
-  payload     JSONB NOT NULL,
-  created_at  TIMESTAMPTZ DEFAULT now()
+  id           BIGSERIAL PK,
+  hospital_id  UUID,                -- NULL ok; ver §4.7, decisão 5
+  shift_id     UUID,
+  actor_type   TEXT,                -- system|coord|doctor
+  actor_id     UUID,
+  event_type   TEXT NOT NULL,
+  payload      JSONB NOT NULL,
+  created_at   TIMESTAMPTZ DEFAULT now()
 );
 CREATE INDEX ON audit_events(shift_id, created_at);
+CREATE INDEX ON audit_events(hospital_id, created_at);
 ```
 
 ### Índices úteis adicionais
 - `shift_offers(doctor_id, status)` para "minhas ofertas pendentes".
 - `shifts(status, starts_at)` para o tick avançar rápido.
 - `shifts(hospital_id, starts_at)` para o calendário.
+
+---
+
+### 4.7 Decisões de modelagem (e por quê)
+
+Várias escolhas do schema foram tomadas conscientemente após discussão e
+análise de alternativas. Esta seção existe pra deixar rastro: por que
+estamos modelando assim, o que foi avaliado e descartado, e quais
+vantagens essas decisões trazem. Importa pra avaliação (o avaliador vai
+ler o `git log` e o `PLANO.md`) e pra revisão futura.
+
+#### Decisão 1 — Especialidades em tabela de lookup, com FK
+
+**Alternativas avaliadas:**
+- `doctors.specialty TEXT` (singular) e `shifts.specialty TEXT`
+- `doctors.specialties TEXT[]` (array para suportar multi-especialidade)
+- `ENUM` Postgres
+- **Escolhida:** tabela `specialties` + N:M `doctor_specialties` + FK em `shifts.specialty_id`
+
+**Por quê:**
+- **String livre quebra silenciosamente**: "Cardiologia" vs "cardiologia"
+  vs "Cardiologista" não fazem match. Isso esconde bugs e mata o
+  ranking. Tanto faz se a coluna é singular ou array — o problema é
+  string como identificador.
+- **ENUM** resolve o match, mas adicionar especialidade nova exige
+  `ALTER TYPE` (chato em produção) e não permite metadata (sigla, cor,
+  ordenação preferida).
+- **Tabela de lookup com `slug` + `name` + FK** dá integridade
+  referencial, suporta evolução (renomear, adicionar campos), e o
+  ranking vira JOIN por ID.
+
+**Vantagens obtidas:**
+- FK impede especialidade inventada no banco.
+- UI vira `<select>` (UX melhor que campo livre — coord não digita errado).
+- Renomear "Clínica Médica" → "Clínica Médica Geral" é 1 UPDATE,
+  sem migração de dados em quem usa.
+- Permite metadata futura sem mexer em quem referencia (cor pro
+  calendário, sigla, ordenação).
+- Seed determinístico: IDs fixos na migration funcionam igual em
+  dev/CI/prod, dispensa lookup por slug em testes.
+
+**Como popular:** data migration Alembic (`op.bulk_insert`) cria as
+8 especialidades-base com IDs fixos (1..8) junto com a tabela.
+**Não vai pro `/admin/seed`** — especialidades são dado de referência
+(o sistema assume que existem desde o boot), não dado ilustrativo.
+
+#### Decisão 2 — Médico ↔ Hospital N:M (afiliações)
+
+**Alternativas avaliadas:**
+- `doctors.hospital_id` (1:N — médico pertence a 1 hospital)
+- **Escolhida:** `doctor_hospital_affiliations` (N:M)
+
+**Por quê:**
+- **Realidade do mercado**: médico plantonista trabalha em 2–4
+  hospitais. O modelo 1:N forçaria cadastro duplicado (mesmo médico
+  com vários `doctor.id`), o que polui histórico, ranking, auth e
+  audit log.
+- **Custo de mudar agora é ~30min**. Mudar depois é mexer em migration,
+  todas as queries de ranking, testes obrigatórios e seed.
+- Demonstra entendimento do domínio na call de avaliação (Munin É um
+  WFM hospitalar).
+
+**Vantagens obtidas:**
+- 1 cadastro de médico serve para N hospitais.
+- `status='inactive'` permite encerrar afiliação sem perder histórico
+  de plantões antigos.
+- Auth fica honesta: médico vê ofertas de TODOS os hospitais onde é
+  afiliado, sem hack.
+- Seed pode ter médicos compartilhados entre 2 hospitais, ficando
+  visualmente mais realista na demo.
+
+**Semântica de `accounts.hospital_id`:**
+- Continua existindo, mas **só obrigatório para coordenador** (o
+  hospital que ele coordena).
+- **NULL para médico** — vínculos vivem em
+  `doctor_hospital_affiliations`.
+- Garantido por `CHECK (account_hospital_per_role)`, não confiança.
+
+#### Decisão 3 — Especialidade "usada" no aceite é inferida (Opção A)
+
+Quando um médico com 2 especialidades aceita um plantão, *qual* delas
+ele está cumprindo? Duas opções foram avaliadas:
+- **Opção A (escolhida):** não armazena. Deriva via `shift_assignments
+  → shifts.specialty_id`. Inferência trivial enquanto cada plantão
+  pede uma única especialidade.
+- **Opção B:** coluna `shift_assignments.specialty_used_id`.
+
+**Por que A:**
+- O plantão tem **uma** especialidade alvo (`shifts.specialty_id`).
+  Não há ambiguidade — se aceitou, está cumprindo aquela.
+- Coluna em B é dado redundante (sempre igual ao do shift).
+- Migrar pra B no futuro (caso plantões aceitem múltiplas
+  especialidades como "Clínica OU Pediatria") é uma migration pequena,
+  com backfill via JOIN.
+
+**Como consultar histórico por especialidade:**
+```sql
+SELECT s.name, COUNT(*)
+FROM shift_assignments a
+JOIN shifts sh ON sh.id = a.shift_id
+JOIN specialties s ON s.id = sh.specialty_id
+WHERE a.doctor_id = :id AND a.status IN ('active','completed')
+GROUP BY s.name;
+```
+
+#### Decisão 4 — Indisponibilidade do médico em tabela própria
+
+**Alternativas avaliadas:**
+- Não modelar (médico recusa quando recebe oferta)
+- JSONB em `doctors.preferences`
+- **Escolhida:** tabela `doctor_unavailabilities`
+
+**Por quê:**
+- Médico viaja, tira férias, ou simplesmente não quer plantão na
+  quinta. Não modelar gera ofertas desperdiçadas e ruído pra coord.
+- JSONB perde a capacidade de query indexada por janela temporal.
+- Tabela com `(starts_at, ends_at)` + índice composto permite query
+  trivial no tick: `NOT EXISTS (... WHERE OVERLAPS(...))`.
+
+**Estratégia de entrega:**
+- Schema agora (custo zero adicional no Dia 1).
+- Filtro no tick implementado junto com o ranking (Dia 2-3).
+- CRUD/UI fica pra bônus de polimento — se sobrar tempo no Dia 7.
+
+#### Decisão 5 — `audit_events.hospital_id` opcional
+
+**Por quê:**
+- Audit já tinha `shift_id`. Adicionar `hospital_id NULL` é custo zero.
+- Permite filtros futuros ("timeline do hospital", não só do plantão)
+  sem nova migration.
+- **NULL é aceitável** porque eventos de sistema (ex.: tick global,
+  housekeeping) podem não ter hospital específico associado.
+
+**Vantagem:** dashboard de auditoria do hospital fica viável quando
+houver tempo de implementar, sem retrabalho no schema.
 
 ---
 
@@ -358,7 +572,24 @@ escritas; aqui o caminho crítico é raro.
 for shift in shifts where status in ('open', 'offering', 'needs_attention'):
     with transaction, FOR UPDATE shift:
         if shift.status == 'open':
-            elegiveis = rank(doctors_da_especialidade_do_hospital)
+            # ranking = médicos que (1) têm a especialidade do shift,
+            # (2) são afiliados ao hospital do shift, (3) não têm
+            # janela de indisponibilidade sobreposta ao plantão.
+            elegiveis = rank(
+                SELECT d.*
+                FROM doctors d
+                JOIN doctor_specialties ds        ON ds.doctor_id = d.id
+                JOIN doctor_hospital_affiliations dha
+                  ON dha.doctor_id = d.id AND dha.status = 'active'
+                WHERE ds.specialty_id = shift.specialty_id
+                  AND dha.hospital_id = shift.hospital_id
+                  AND NOT EXISTS (
+                    SELECT 1 FROM doctor_unavailabilities du
+                    WHERE du.doctor_id = d.id
+                      AND tstzrange(du.starts_at, du.ends_at) &&
+                          tstzrange(shift.starts_at, shift.ends_at)
+                  )
+            )
             send_batch(shift, elegiveis[0:batch_size], batch=1)
             shift.status = 'offering'
             shift.current_batch = 1
@@ -539,10 +770,13 @@ Todos rodam contra Postgres real (via `testcontainers` ou DB de teste).
    31 min, chama tick. Assert: 3 offers de batch 1 expiradas, 3 novas
    offers de batch 2 criadas com médicos diferentes.
 
-3. **`test_doctor_cannot_see_other_hospitals_shifts`**
-   Cria 2 hospitais, 2 médicos. Médico do hospital A faz `GET /me/offers`.
-   Assert: não retorna oferta do hospital B mesmo se houver um shift
-   "vazado" no DB.
+3. **`test_doctor_only_sees_offers_from_affiliated_hospitals`**
+   Cria 2 hospitais (A, B), 1 médico afiliado **só ao A**. Insere
+   "vazamento" no DB: uma `shift_offers` para esse médico em um plantão
+   do hospital B (caso passe a aparecer por bug). Médico faz
+   `GET /me/offers`. Assert: retorna só ofertas onde o `shift.hospital_id`
+   bate com alguma afiliação `active` do médico — a oferta "vazada" do
+   B fica de fora.
 
 4. **`test_escalation_to_needs_attention`**
    Plantão começa em 5h, `escalate_hours_before=6`, tick roda. Assert:
@@ -585,11 +819,21 @@ Todos rodam contra Postgres real (via `testcontainers` ou DB de teste).
   - `deploy-fly.yml`: deploy em push na main
 
 ### Seed
+- **Especialidades já existem**: vieram da migration inicial via
+  `op.bulk_insert` (ver §4.7, decisão 1). O seed não as recria.
 - `POST /admin/seed` (Bearer admin secret) cria:
-  - 1 hospital
-  - 30 médicos (mix de Clínica Médica, Cardiologia, Pediatria, etc)
-  - 1 coordenadora
-  - 10 plantões nos próximos 7 dias com horários variados
+  - **2 hospitais** (pra demonstrar afiliação N:M na prática)
+  - **2 coordenadoras** (uma por hospital)
+  - **30 médicos** com:
+    - 1 ou 2 especialidades cada (referenciando IDs de `specialties`)
+    - mix realista de Clínica Médica, Pediatria, Cardiologia,
+      Ginecologia/Obstetrícia, Ortopedia, Anestesiologia, UTI,
+      Pronto-Socorro
+    - ~20–30% afiliados a **ambos** os hospitais (resto a apenas um)
+  - **Algumas indisponibilidades** (3–4 médicos com janela futura),
+    pra demonstrar que o tick filtra
+  - **12 plantões** nos próximos 7 dias, horários e especialidades
+    variadas, distribuídos entre os 2 hospitais
   - Senhas: `123456` em todos (para teste; README documenta)
 - Rodar 1× pós-deploy. Documentar no README como rodar de novo.
 
@@ -602,7 +846,7 @@ Todos rodam contra Postgres real (via `testcontainers` ou DB de teste).
 **1. Ranking de médicos com explicabilidade** *(~3h)*
 Heurística simples e exposta:
 ```
-score = 3 * mesma_especialidade
+score = 3 * mesma_especialidade 
       + 2 * taxa_aceite_ultimos_30d
       - 1 * num_plantoes_aceitos_semana
       + 1 * dias_desde_ultima_oferta_normalizado
