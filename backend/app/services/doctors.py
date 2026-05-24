@@ -11,7 +11,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
-from app.api.errors import Conflict, UnprocessableEntity
+from app.api.errors import Conflict, NotFound, UnprocessableEntity
 from app.infra.hashing import hash_password
 from app.models import (
     Account,
@@ -107,6 +107,13 @@ def doctor_view(session: Session, doctor: Doctor) -> dict[str, Any]:
         "specialty_ids": specialty_ids,
         "hospital_ids": hospital_ids,
     }
+
+
+def resolve_doctor(session: Session, account_id: UUID) -> Doctor:
+    doctor = session.scalar(select(Doctor).where(Doctor.account_id == account_id))
+    if doctor is None:
+        raise NotFound("no doctor profile for this account")
+    return doctor
 
 
 def list_doctors(

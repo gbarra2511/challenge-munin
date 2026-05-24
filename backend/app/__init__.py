@@ -54,11 +54,17 @@ def create_app(
 def _register_blueprints(app: Flask) -> None:
     from app.api.auth import bp as auth_bp
     from app.api.doctors import bp as doctors_bp
+    from app.api.jobs import bp as jobs_bp
+    from app.api.me import bp as me_bp
+    from app.api.offers import bp as offers_bp
     from app.api.shifts import bp as shifts_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(doctors_bp)
     app.register_blueprint(shifts_bp)
+    app.register_blueprint(offers_bp)
+    app.register_blueprint(me_bp)
+    app.register_blueprint(jobs_bp)
 
 
 def _register_cors(app: Flask, origins_csv: str) -> None:

@@ -6,6 +6,7 @@ válido. Handlers leem o ator via `current_claims()`.
 """
 from __future__ import annotations
 
+import hmac
 from collections.abc import Callable
 from functools import wraps
 from typing import Any
@@ -37,6 +38,24 @@ def require_role(*roles: str) -> Callable:
             if roles and claims.get("role") not in roles:
                 raise Forbidden("insufficient role for this action")
             g.claims = claims
+            return fn(*args, **kwargs)
+
+        return wrapper
+
+    return decorator
+
+
+def require_secret(config_key: str) -> Callable:
+    """Protege endpoints de máquina (tick, seed) com um segredo compartilhado
+    via Bearer — não JWT. Comparação em tempo constante."""
+
+    def decorator(fn: Callable) -> Callable:
+        @wraps(fn)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            token = _extract_bearer()
+            expected = current_app.config[config_key]
+            if not hmac.compare_digest(token, expected):
+                raise Unauthorized("invalid secret")
             return fn(*args, **kwargs)
 
         return wrapper

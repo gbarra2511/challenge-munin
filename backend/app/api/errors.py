@@ -59,6 +59,11 @@ class Conflict(ApiError):
     code = "conflict"
 
 
+class Gone(ApiError):
+    status_code = 410
+    code = "gone"
+
+
 class UnprocessableEntity(ApiError):
     status_code = 422
     code = "validation_error"

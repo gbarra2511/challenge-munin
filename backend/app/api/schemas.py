@@ -25,6 +25,11 @@ class DoctorCreateIn(BaseModel):
     hospital_ids: list[UUID] = Field(default_factory=list)
 
 
+class OfferCreateIn(BaseModel):
+    # Vazio/ausente → usa o ranking. Preenchido → oferta manual a esses médicos.
+    doctor_ids: list[UUID] = Field(default_factory=list)
+
+
 class ShiftCreateIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
