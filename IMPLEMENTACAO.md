@@ -3,7 +3,7 @@
 > Estado atual da implementação do Mini-WFM e próximos passos.
 > **Atualizar após cada feature grande. Revisar no início de cada sessão.**
 
-Última atualização: 2026-05-24 (Dia 2 fechado — camada Flask: auth + CRUD de médicos/plantões)
+Última atualização: 2026-05-24 (Dia 3 fechado — pipeline de ofertas + aceite atômico + 5 testes obrigatórios)
 
 ---
 
@@ -14,17 +14,56 @@
 | Esqueleto do projeto | ✅ feito |
 | Schema do banco + state machines | ✅ feito |
 | Auth + CRUD básicos | ✅ feito |
-| Pipeline de ofertas + tick | ⏳ pendente |
-| Accept atômico (race condition) | ⏳ pendente |
+| Pipeline de ofertas + tick | ✅ feito |
+| Accept atômico (race condition) | ✅ feito |
 | Frontend (Hallmark + telas) | ⏳ pendente |
 | Deploy público + seed | ⏳ pendente |
-| Testes obrigatórios (5) | ⏳ pendente |
+| Testes obrigatórios (5) | ✅ feito (5/5 + extras) |
 | README final | ⏳ pendente |
 | Bônus | ⏳ depois do obrigatório |
 
 ---
 
 ## Feito
+
+### Pipeline de ofertas + aceite atômico + 5 testes obrigatórios (2026-05-24)
+
+O coração técnico do desafio. **83/83 testes passando**, ruff limpo.
+Teste de concorrência rodado 8× seguidas sem flakiness.
+
+- **`services/ranking.py`**: elegíveis = specialty ✓ + afiliação ATIVA ✓ +
+  sem indisponibilidade sobreposta (`tstzrange && tstzrange` no Postgres).
+  Ordem determinística (nome, id) — base estável pro avanço de batch.
+- **`services/offers.py`** (núcleo):
+  - `open_offers` (POST /shifts/:id/offer): abre batch 1 via ranking ou
+    lista manual de `doctor_ids`.
+  - `run_tick`: avanço **idempotente** (PLANO §7) — expira batch vencido,
+    abre próximo batch com médicos não-ofertados, escala p/ `needs_attention`
+    se chegou perto demais. Lock `FOR UPDATE` nos shifts candidatos.
+  - `accept_offer`: **aceite atômico**. ⚠️ Corrigi a ordem de lock do PLANO:
+    travar **shift → offer** (não offer → shift). Travar a oferta primeiro
+    causa **deadlock** entre 2 aceites (o supersede de um precisa travar a
+    oferta que o outro segura). Com o shift como ponto único de serialização,
+    quem perde bloqueia antes de tocar em qualquer oferta → 409 limpo.
+  - `decline_offer`.
+- **`services/audit.py`**: `record_event` grava cada transição relevante.
+- **Endpoints novos**: `POST /shifts/:id/offer`, `GET /shifts/:id/audit`,
+  `POST /offers/:id/accept` (409/410), `POST /offers/:id/decline`,
+  `GET /me/offers` (filtrado por afiliação), `GET /me/assignments`,
+  `POST /jobs/tick` (protegido por `@require_secret('TICK_SECRET')`,
+  comparação em tempo constante via `hmac.compare_digest`).
+- **Erro `Gone` (410)** pro aceite de oferta expirada.
+- **5 testes obrigatórios (PLANO §11)** todos verdes + extras:
+  1. `test_concurrent_accept_only_one_wins` — 2 threads, conexões reais,
+     Barrier; exatamente 1 ok + 1 conflito (409), 1 assignment ativa.
+  2. `test_pipeline_advances_to_next_batch_after_window` — clock +31min.
+  3. `test_doctor_only_sees_offers_from_affiliated_hospitals` — oferta
+     "vazada" do outro hospital filtrada.
+  4. `test_escalation_to_needs_attention` + audit event.
+  5. `test_accept_expired_offer_returns_410_and_marks_expired`.
+  Extras: `test_tick_is_idempotent`, accept happy-path/supersede, decline.
+- **conftest**: helpers `seed_doctor`/`seed_shift` + fixture `real_engine`
+  (sem savepoint, com TRUNCATE) pro teste de concorrência.
 
 ### Camada Flask — auth + CRUD de médicos/plantões (2026-05-24)
 
@@ -140,18 +179,16 @@ Pronta pra ser usada pelos endpoints `/auth/login` e
 - [x] Decorator `@require_role(...)` ✅
 - [x] CRUD básico de médicos e plantões (com `specialty_id`) ✅
 
-### 2. Pipeline de ofertas (Dia 2-3)
-- [ ] `POST /shifts/:id/offer` → cria batch 1
-- [ ] `POST /jobs/tick` → avança pipeline (idempotente).
-  Ranking JOIN: `doctor_specialties` × `doctor_hospital_affiliations`
-  × `NOT EXISTS doctor_unavailabilities` (ver PLANO §7)
-- [ ] Lógica de expiração e escalação para `needs_attention`
-- [ ] Audit log gravando cada transição (usar state machines de §1 acima)
+### 2. Pipeline de ofertas (Dia 3) ✅ 2026-05-24
+- [x] `POST /shifts/:id/offer` → cria batch 1 ✅
+- [x] `POST /jobs/tick` → avança pipeline (idempotente) ✅
+- [x] Lógica de expiração e escalação para `needs_attention` ✅
+- [x] Audit log gravando cada transição (`services/audit.py`) ✅
 
-### 3. Accept atômico (Dia 3)
-- [ ] `POST /offers/:id/accept` com `SELECT FOR UPDATE`
-- [ ] `POST /offers/:id/decline`
-- [ ] **Teste de race condition com 2 threads** passando
+### 3. Accept atômico (Dia 3) ✅ 2026-05-24
+- [x] `POST /offers/:id/accept` com `SELECT FOR UPDATE` (lock shift→offer) ✅
+- [x] `POST /offers/:id/decline` ✅
+- [x] **Teste de race condition com 2 threads** passando (8× sem flaky) ✅
 
 ### 4. Frontend (Dia 4-6)
 - [ ] Invocar `/hallmark` para gerar tokens + princípios
@@ -186,6 +223,14 @@ Pronta pra ser usada pelos endpoints `/auth/login` e
 
 ## Decisões já tomadas
 
+- **Ordem de lock do aceite: shift → offer** (corrige o PLANO §6, que travava
+  offer → shift). Travar a oferta primeiro causa deadlock entre dois aceites
+  do mesmo plantão (o `UPDATE ... superseded` de um precisa travar a oferta que
+  o outro já segura). Travar o shift primeiro o torna o ponto único de
+  serialização: o perdedor bloqueia antes de tocar em qualquer oferta. Ver
+  comentário em `services/offers.py::accept_offer` e o teste de 2 threads.
+- **Tick com commit explícito por rodada, sem commit no teardown** — controle de
+  transação fica visível no serviço (precisa pro `FOR UPDATE`).
 - **Python 3.12** (não 3.14 que tá local) para alinhar com a stack da Munin.
 - **`uv`** como gerenciador de pacotes do backend.
 - **Fly.io** pro backend (locks + transações longas funcionam melhor que serverless).
