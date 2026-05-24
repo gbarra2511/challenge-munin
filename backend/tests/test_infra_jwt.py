@@ -95,5 +95,6 @@ def test_exp_is_iat_plus_window() -> None:
         expires_minutes=30,
         now=issued,
     )
-    claims = verify(token, secret=SECRET)
+    # Verifica no mesmo instante de emissão → não depende do relógio real.
+    claims = verify(token, secret=SECRET, now=issued)
     assert claims["exp"] - claims["iat"] == 30 * 60

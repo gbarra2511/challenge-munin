@@ -47,8 +47,21 @@ def sign(
     return _pyjwt.encode(payload, secret, algorithm=_ALGORITHM)
 
 
-def verify(token: str, *, secret: str) -> dict[str, Any]:
+def verify(token: str, *, secret: str, now: datetime | None = None) -> dict[str, Any]:
+    # `now` injetável (simétrico com sign): PyJWT não aceita relógio externo,
+    # então decodificamos sem checar exp e validamos a expiração à mão.
     try:
-        return _pyjwt.decode(token, secret, algorithms=[_ALGORITHM])
+        claims = _pyjwt.decode(
+            token,
+            secret,
+            algorithms=[_ALGORITHM],
+            options={"verify_exp": False},
+        )
     except _pyjwt.PyJWTError as exc:
         raise InvalidToken(str(exc)) from exc
+
+    current = int((now or datetime.now(UTC)).timestamp())
+    exp = claims.get("exp")
+    if exp is not None and current >= exp:
+        raise InvalidToken("token expired")
+    return claims
