@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="pt-BR" data-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mini-WFM · Sistema de design</title>
+
+  <!-- Fontes: Geist (corpo) + JetBrains Mono (dados) via Google; Cabinet Grotesk (display) via Fontshare -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@700,800&display=swap" rel="stylesheet" />
+
+  <!-- O sistema travado -->
+  <link rel="stylesheet" href="../tokens.css" />
+
+  <style>
+    /* Hallmark · preview do sistema (modern-minimal · custom · light/geometric-sans/warm)
+     * Referencia tokens por nome — nada de cor/fonte inline. */
+
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { overflow-x: clip; }
+    body {
+      margin: 0;
+      background: var(--color-paper);
+      color: var(--color-ink);
+      font-family: var(--font-body);
+      font-size: var(--text-base);
+      line-height: var(--leading-body);
+      -webkit-font-smoothing: antialiased;
+    }
+    .mono { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+
+    /* ---- layout ---- */
+    .wrap { max-width: var(--app-maxw); margin: 0 auto; padding: var(--space-xl) var(--space-lg); }
+    header.bar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: var(--space-md) var(--space-lg);
+      border-bottom: 1px solid var(--color-rule);
+      position: sticky; top: 0; background: color-mix(in oklch, var(--color-paper) 88%, transparent);
+      backdrop-filter: blur(8px); z-index: 10;
+    }
+    .wordmark {
+      font-family: var(--font-display); font-weight: var(--weight-heavy);
+      font-size: var(--text-md); letter-spacing: var(--tracking-display);
+      display: flex; align-items: center; gap: var(--space-xs);
+    }
+    .wordmark .dot { width: 0.6em; height: 0.6em; border-radius: var(--radius-full); background: var(--color-accent); }
+
+    section { margin-top: var(--space-2xl); }
+    .eyebrow {
+      font-size: var(--text-sm); text-transform: uppercase; letter-spacing: var(--tracking-label);
+      color: var(--color-muted); font-weight: var(--weight-medium); margin: 0 0 var(--space-md);
+    }
+    h1.display {
+      font-family: var(--font-display); font-weight: var(--weight-heavy);
+      font-size: var(--text-display); line-height: var(--leading-tight);
+      letter-spacing: var(--tracking-display); margin: 0 0 var(--space-sm);
+      overflow-wrap: anywhere;
+    }
+    h2.sec {
+      font-family: var(--font-display); font-weight: var(--weight-display);
+      font-size: var(--text-lg); line-height: var(--leading-snug);
+      letter-spacing: var(--tracking-tight); margin: 0 0 var(--space-md);
+    }
+    p.lede { color: var(--color-ink-2); max-width: var(--measure); margin: 0 0 var(--space-md); }
+    .grid { display: grid; gap: var(--space-lg); }
+
+    /* ---- card base ---- */
+    .card {
+      background: var(--color-surface); border: 1px solid var(--color-rule);
+      border-radius: var(--radius-md); box-shadow: var(--shadow-sm); padding: var(--space-lg);
+    }
+
+    /* ---- status pill ---- */
+    /* Modelo Linear: texto ink legível + ponto/ícone na cor (neon) do status */
+    .pill {
+      display: inline-flex; align-items: center; gap: var(--space-2xs);
+      font-size: var(--text-sm); font-weight: var(--weight-medium);
+      padding: var(--space-3xs) var(--space-xs); border-radius: var(--radius-pill);
+      line-height: 1.4; color: var(--color-ink);
+    }
+    .pill .glyph { font-size: 0.85em; color: var(--_dot); }
+    .pill .live-dot { background: var(--_dot); }
+    .pill[data-s="open"]            { --_dot: var(--status-open);            background: var(--status-open-soft); }
+    .pill[data-s="offering"]        { --_dot: var(--status-offering);        background: var(--status-offering-soft); }
+    .pill[data-s="accepted"]        { --_dot: var(--status-accepted);        background: var(--status-accepted-soft); }
+    .pill[data-s="confirmed"]       { --_dot: var(--status-confirmed);       background: var(--status-confirmed-soft); }
+    .pill[data-s="needs_attention"] { --_dot: var(--status-needs-attention); background: var(--status-needs-attention-soft); }
+    .pill[data-s="cancelled"]       { --_dot: var(--status-cancelled);       background: var(--status-cancelled-soft); }
+    .pill[data-s="cancelled"] .txt  { text-decoration: line-through; color: var(--color-muted); }
+
+    .live-dot {
+      width: 8px; height: 8px; border-radius: var(--radius-full);
+      background: var(--color-accent); display: inline-block;
+      animation: pulse 2s var(--ease-in-out) infinite;
+    }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+    @media (prefers-reduced-motion: reduce) { .live-dot { animation: none; } }
+
+    /* ---- KPI ---- */
+    .kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .kpi .n {
+      font-family: var(--font-display); font-weight: var(--weight-heavy);
+      font-size: var(--text-2xl); line-height: 1; letter-spacing: var(--tracking-display);
+      font-variant-numeric: tabular-nums;
+    }
+    .kpi .l { color: var(--color-muted); font-size: var(--text-sm); margin-top: var(--space-xs); }
+    .kpi[data-accent] .n { color: var(--color-accent); }
+    .kpi[data-risk] .n   { color: var(--color-danger); }
+
+    /* ---- table ---- */
+    table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
+    th { text-align: left; color: var(--color-muted); font-weight: var(--weight-medium);
+         padding: var(--space-xs) var(--space-sm); border-bottom: 1px solid var(--color-rule); }
+    td { padding: var(--space-sm); border-bottom: 1px solid var(--color-rule-2); }
+    tr:last-child td { border-bottom: none; }
+
+    /* ---- offer card (médico) ---- */
+    .offer { max-width: 420px; }
+    .offer .row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-sm); }
+    .offer .spec { font-family: var(--font-display); font-weight: var(--weight-display); font-size: var(--text-md); }
+    .offer .meta { color: var(--color-ink-2); font-size: var(--text-sm); margin-top: var(--space-2xs); }
+    .offer .rate { font-family: var(--font-data); font-weight: 500; font-size: var(--text-md); }
+    .countdown {
+      display: flex; align-items: center; gap: var(--space-xs);
+      margin: var(--space-md) 0; padding: var(--space-sm) var(--space-md);
+      background: var(--status-offering-soft); border-radius: var(--radius-sm);
+      color: var(--color-accent); font-weight: var(--weight-medium); font-size: var(--text-sm);
+    }
+    .countdown .t { font-family: var(--font-data); font-size: var(--text-md); font-weight: 700; }
+    .offer .actions { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-sm); margin-top: var(--space-md); }
+
+    /* ---- buttons (8 estados) ---- */
+    .btn {
+      font-family: var(--font-body); font-size: var(--text-base); font-weight: var(--weight-medium);
+      min-height: var(--tap-min); padding: 0 var(--space-lg); border-radius: var(--radius-sm);
+      border: 1px solid transparent; cursor: pointer; display: inline-flex;
+      align-items: center; justify-content: center; gap: var(--space-xs);
+      transition: transform var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+    }
+    .btn-primary { background: var(--color-accent-strong); color: var(--color-accent-ink); box-shadow: var(--shadow-sm); }
+    .btn-primary:hover, .btn-primary.is-hover { background: var(--color-accent-hover); }
+    .btn-primary:active, .btn-primary.is-active { transform: translateY(1px); }
+    .btn-secondary { background: var(--color-surface); color: var(--color-ink); border-color: var(--color-rule-strong); }
+    .btn-secondary:hover, .btn-secondary.is-hover { background: var(--color-surface-2); }
+    .btn:focus-visible, .btn.is-focus { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+    .btn[disabled], .btn.is-disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn .spin { width: 1em; height: 1em; border: 2px solid currentColor; border-right-color: transparent;
+                 border-radius: var(--radius-full); animation: spin 0.7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) { .btn .spin { animation: none; } }
+    .btn-row { display: flex; flex-wrap: wrap; gap: var(--space-sm); align-items: center; }
+    .state-label { display: grid; gap: var(--space-2xs); justify-items: center; font-size: var(--text-xs); color: var(--color-faint); text-transform: uppercase; letter-spacing: var(--tracking-label); }
+
+    /* ---- empty state ---- */
+    .empty { text-align: center; padding: var(--space-2xl); border: 1px dashed var(--color-rule-strong); border-radius: var(--radius-md); }
+    .empty .icon { font-size: var(--text-xl); color: var(--color-faint); }
+    .empty p { color: var(--color-muted); max-width: 36ch; margin: var(--space-sm) auto 0; }
+
+    /* ---- toast ---- */
+    .toast { display: flex; gap: var(--space-sm); align-items: flex-start; max-width: 360px;
+             background: var(--color-surface); border: 1px solid var(--color-rule); border-left: 3px solid var(--color-rule);
+             border-radius: var(--radius-sm); box-shadow: var(--shadow-lg); padding: var(--space-sm) var(--space-md); }
+    .toast[data-kind="conflict"] { border-left-color: var(--status-offering); }
+    .toast[data-kind="gone"]     { border-left-color: var(--status-needs-attention); }
+    .toast .ttl { font-weight: var(--weight-medium); }
+    .toast .sub { color: var(--color-muted); font-size: var(--text-sm); margin-top: var(--space-3xs); }
+
+    /* ---- swatches ---- */
+    .swatches { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+    .sw { border: 1px solid var(--color-rule); border-radius: var(--radius-sm); overflow: hidden; }
+    .sw .chip { height: 56px; }
+    .sw .cap { padding: var(--space-xs) var(--space-sm); font-size: var(--text-xs); color: var(--color-muted); }
+    .sw .cap b { display: block; color: var(--color-ink); font-weight: var(--weight-medium); }
+
+    .toggle { font-family: var(--font-body); font-size: var(--text-sm); font-weight: var(--weight-medium);
+              background: var(--color-surface); color: var(--color-ink); border: 1px solid var(--color-rule-strong);
+              border-radius: var(--radius-pill); padding: var(--space-2xs) var(--space-md); cursor: pointer; min-height: 36px; }
+
+    @media (max-width: 768px) {
+      .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 480px) {
+      .wrap { padding: var(--space-lg) var(--space-md); }
+    }
+  </style>
+</head>
+<body>
+  <header class="bar">
+    <span class="wordmark"><span class="dot"></span>Munin&nbsp;WFM</span>
+    <button class="toggle" id="theme" type="button">◐ Tema</button>
+  </header>
+
+  <main class="wrap">
+    <section style="margin-top: var(--space-xl)">
+      <p class="eyebrow">Sistema de design · preview</p>
+      <h1 class="display">Plantões preenchidos<br>sem ninguém no telefone.</h1>
+      <p class="lede">Canvas azul-claro, cards que saltam, e um accent índigo elétrico usado só onde
+        precisa chamar atenção — a começar pelo estado <b>offering</b>, o plantão vivo com a janela
+        correndo. Tudo frio, com um único ponto quente (o vermelho-alarme). Tudo abaixo lê os mesmos
+        tokens que o app vai usar.</p>
+      <div class="btn-row">
+        <button class="btn btn-primary" type="button">Criar plantão</button>
+        <button class="btn btn-secondary" type="button">Ver calendário</button>
+      </div>
+    </section>
+
+    <!-- STATUS -->
+    <section>
+      <h2 class="sec">Status do plantão</h2>
+      <p class="lede"><b>offering</b> usa o accent (vivo, countdown). <b>needs_attention</b> é um
+        vermelho-alarme distinto. Cada status carrega forma/ícone — nunca cor sozinha.</p>
+      <div class="btn-row">
+        <span class="pill" data-s="open"><span class="glyph">○</span><span class="txt">aberto</span></span>
+        <span class="pill" data-s="offering"><span class="live-dot"></span><span class="txt">em oferta</span> · <span class="mono">⏳ 14:32</span></span>
+        <span class="pill" data-s="accepted"><span class="glyph">✓</span><span class="txt">preenchido</span></span>
+        <span class="pill" data-s="confirmed"><span class="glyph">✓✓</span><span class="txt">confirmado</span></span>
+        <span class="pill" data-s="needs_attention"><span class="glyph">▲</span><span class="txt">em risco</span></span>
+        <span class="pill" data-s="cancelled"><span class="glyph">⊘</span><span class="txt">cancelado</span></span>
+      </div>
+    </section>
+
+    <!-- DASHBOARD KPIs -->
+    <section>
+      <h2 class="sec">Dashboard da coordenadora</h2>
+      <div class="grid kpis">
+        <div class="card kpi"><div class="n">12</div><div class="l">Abertos</div></div>
+        <div class="card kpi" data-accent><div class="n">5</div><div class="l">Em oferta</div></div>
+        <div class="card kpi"><div class="n">28</div><div class="l">Preenchidos</div></div>
+        <div class="card kpi" data-risk><div class="n">3</div><div class="l">Em risco</div></div>
+      </div>
+    </section>
+
+    <!-- RISK TABLE -->
+    <section>
+      <h2 class="sec">Plantões em risco</h2>
+      <div class="card" style="padding: 0">
+        <table>
+          <thead><tr><th>Plantão</th><th>Especialidade</th><th>Início</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td>UTI noturno</td><td>Cardiologia</td><td class="mono">hoje · 22:00</td><td><span class="pill" data-s="needs_attention"><span class="glyph">▲</span><span class="txt">em risco</span></span></td></tr>
+            <tr><td>Pronto-socorro</td><td>Clínica geral</td><td class="mono">amanhã · 07:00</td><td><span class="pill" data-s="offering"><span class="live-dot"></span><span class="txt">batch 2/3</span></span></td></tr>
+            <tr><td>Enfermaria B</td><td>Pediatria</td><td class="mono">amanhã · 19:00</td><td><span class="pill" data-s="open"><span class="glyph">○</span><span class="txt">aberto</span></span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- OFFER CARD -->
+    <section>
+      <h2 class="sec">Oferta no celular do médico</h2>
+      <div class="card offer">
+        <div class="row">
+          <div>
+            <div class="spec">Cardiologia</div>
+            <div class="meta">Hospital Central · plantão noturno</div>
+            <div class="meta mono">sáb 24/05 · 22:00–08:00</div>
+          </div>
+          <div class="rate">R$&nbsp;1.200</div>
+        </div>
+        <div class="countdown">
+          <span class="live-dot"></span> Expira em <span class="t" id="cd">14:58</span>
+        </div>
+        <div class="actions">
+          <button class="btn btn-primary" type="button">Aceitar</button>
+          <button class="btn btn-secondary" type="button">Recusar</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- BUTTON STATES -->
+    <section>
+      <h2 class="sec">Botões · 8 estados</h2>
+      <div class="btn-row" style="gap: var(--space-lg)">
+        <span class="state-label"><button class="btn btn-primary" type="button">Aceitar</button>default</span>
+        <span class="state-label"><button class="btn btn-primary is-hover" type="button">Aceitar</button>hover</span>
+        <span class="state-label"><button class="btn btn-primary is-focus" type="button">Aceitar</button>focus</span>
+        <span class="state-label"><button class="btn btn-primary is-active" type="button">Aceitar</button>active</span>
+        <span class="state-label"><button class="btn btn-primary is-disabled" disabled type="button">Aceitar</button>disabled</span>
+        <span class="state-label"><button class="btn btn-primary" type="button"><span class="spin"></span>Enviando</button>loading</span>
+        <span class="state-label"><button class="btn btn-secondary" style="color: var(--color-danger); border-color: var(--color-danger)" type="button">⚠ Erro</button>error</span>
+        <span class="state-label"><button class="btn btn-secondary" style="color: var(--color-success); border-color: var(--color-success)" type="button">✓ Salvo</button>success</span>
+      </div>
+    </section>
+
+    <!-- EMPTY + TOASTS -->
+    <section class="grid" style="grid-template-columns: 1fr 1fr; gap: var(--space-lg)">
+      <div>
+        <h2 class="sec">Empty state</h2>
+        <div class="empty">
+          <div class="icon">◔</div>
+          <p>Nenhuma oferta agora. Quando surgir, você vê aqui — pode fechar o app.</p>
+        </div>
+      </div>
+      <div>
+        <h2 class="sec">Toasts de concorrência</h2>
+        <div class="grid" style="gap: var(--space-sm)">
+          <div class="toast" data-kind="conflict"><div><div class="ttl">Esse plantão acabou de ser preenchido.</div><div class="sub">409 · outro médico aceitou primeiro.</div></div></div>
+          <div class="toast" data-kind="gone"><div><div class="ttl">Essa oferta expirou.</div><div class="sub">410 · a janela fechou antes do aceite.</div></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SWATCHES -->
+    <section>
+      <h2 class="sec">Tokens de cor</h2>
+      <div class="grid swatches">
+        <div class="sw"><div class="chip" style="background: var(--color-accent)"></div><div class="cap"><b>accent</b>#040DC1 índigo</div></div>
+        <div class="sw"><div class="chip" style="background: var(--color-accent-2)"></div><div class="cap"><b>accent-2</b>#7B2FF7 violeta</div></div>
+        <div class="sw"><div class="chip" style="background: var(--status-open)"></div><div class="cap"><b>open</b>slate-azul</div></div>
+        <div class="sw"><div class="chip" style="background: var(--status-accepted)"></div><div class="cap"><b>accepted</b>#48FF00 neon</div></div>
+        <div class="sw"><div class="chip" style="background: var(--status-confirmed)"></div><div class="cap"><b>confirmed</b>#7B2FF7 roxo</div></div>
+        <div class="sw"><div class="chip" style="background: var(--status-needs-attention)"></div><div class="cap"><b>needs_attention</b>#FF4800 neon</div></div>
+        <div class="sw"><div class="chip" style="background: var(--color-ink)"></div><div class="cap"><b>ink</b>charcoal quente</div></div>
+        <div class="sw"><div class="chip" style="background: var(--color-surface-2)"></div><div class="cap"><b>surface-2</b>painel</div></div>
+      </div>
+    </section>
+
+    <p class="mono" style="margin: var(--space-2xl) 0 var(--space-lg); color: var(--color-faint); font-size: var(--text-sm)">
+      Hallmark · custom · light/geometric-sans/cool · #040DC1 + #DDEAFF + #7B2FF7 · neon #48FF00 / #FF4800 · Cabinet Grotesk + Geist + JetBrains Mono
+    </p>
+  </main>
+
+  <script>
+    // Toggle light/dark (dark é token-ready em tokens.css)
+    document.getElementById('theme').addEventListener('click', () => {
+      const r = document.documentElement;
+      r.dataset.theme = r.dataset.theme === 'dark' ? 'light' : 'dark';
+    });
+
+    // Countdown ao vivo do card de oferta (recalcula contra um alvo, como contra expires_at ISO)
+    const target = Date.now() + 14 * 60_000 + 58_000;
+    const el = document.getElementById('cd');
+    function tick() {
+      const left = Math.max(0, target - Date.now());
+      const m = String(Math.floor(left / 60000)).padStart(2, '0');
+      const s = String(Math.floor((left % 60000) / 1000)).padStart(2, '0');
+      el.textContent = `${m}:${s}`;
+    }
+    tick(); setInterval(tick, 1000);
+  </script>
+</body>
+</html>

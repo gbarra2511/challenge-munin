@@ -1,0 +1,181 @@
+/* Hallmark · genre: modern-minimal · scope: design-system (Mini-WFM app shell)
+ * theme: custom · vibe: "azul clínico elétrico + neon, calmo, inovador"
+ * paper: oklch(93.4% 0.032 260) (#DDEAFF) · accent: oklch(37.4% 0.249 265) (#040DC1)
+ * accent-2: oklch(54% 0.266 292) (#7B2FF7 violeta — análogo ao índigo)
+ * neon de status: accepted #48FF00 · needs_attention #FF4800 (sinais, não texto)
+ * display: Cabinet Grotesk · body: Geist · data: JetBrains Mono
+ * axes: light / geometric-sans / cool · studied: no · context: explicit
+ * pre-emit critique: P5 H5 E5 S5 R4 V5
+ *
+ * Canvas azul-claro com cards near-white que saltam dele. Accent índigo
+ * elétrico + secundária violeta + dois neons de status (lime/laranja).
+ * REGRA DE LEGIBILIDADE: os neons (accepted L87, needs_attention L66) são
+ * SINAIS — pontos, bordas, números grandes, fills — nunca texto miúdo. Pills
+ * usam texto ink (escuro) + ponto neon. Toda cor é OKLCH, sempre por token.
+ */
+
+:root {
+  /* ---- Superfícies — canvas azul (#DDEAFF) + cards near-white ------------ */
+  --color-paper:        oklch(93.4% 0.032 260);  /* #DDEAFF — canvas do app  */
+  --color-surface:      oklch(98.8% 0.008 262);  /* cards (saltam do canvas) */
+  --color-surface-2:    oklch(96.2% 0.016 260);  /* hover / painel elevado   */
+  --color-surface-sunk: oklch(91% 0.03 260);     /* inputs / áreas recuadas  */
+
+  /* ---- Tinta — azul-preto (o "tom de preto"), nunca #000 ----------------- */
+  --color-ink:    oklch(20% 0.03 265);
+  --color-ink-2:  oklch(38% 0.025 263);
+  --color-muted:  oklch(48% 0.02 262);
+  --color-faint:  oklch(62% 0.016 262);
+
+  /* ---- Linhas / bordas -------------------------------------------------- */
+  --color-rule:         oklch(86% 0.02 260);
+  --color-rule-2:       oklch(90% 0.016 260);
+  --color-rule-strong:  oklch(80% 0.025 260);
+
+  /* ---- Accent primário — índigo elétrico (#040DC1) ---------------------- */
+  --color-accent:        oklch(37.4% 0.249 265);
+  --color-accent-strong: oklch(37.4% 0.249 265);
+  --color-accent-hover:  oklch(31% 0.22 265);
+  --color-accent-soft:   oklch(92% 0.06 262);
+  --color-accent-ink:    oklch(98.5% 0.01 260);
+  --color-focus:         oklch(46% 0.25 265);
+
+  /* ---- Accent secundário — violeta elétrico (#7B2FF7), análogo ---------- */
+  --color-accent-2:        oklch(54% 0.266 292);  /* confirmed, dados, realces */
+  --color-accent-2-strong: oklch(48% 0.24 293);
+  --color-accent-2-soft:   oklch(93% 0.07 295);
+
+  /* ---- Status do domínio (fg/ponto + soft de fundo) --------------------- */
+  /* fg = cor do PONTO/ícone (neon onde marcado). Texto da pill é ink.       */
+  --status-open:               oklch(52% 0.04 258);      /* slate-azul: aguardando */
+  --status-open-soft:          oklch(93% 0.02 258);
+  --status-offering:           var(--color-accent);       /* índigo: ao vivo */
+  --status-offering-soft:      var(--color-accent-soft);
+  --status-accepted:           oklch(87.4% 0.285 141);    /* #48FF00 lime NEON */
+  --status-accepted-soft:      oklch(93% 0.10 138);
+  --status-confirmed:          var(--color-accent-2);      /* #7B2FF7 violeta */
+  --status-confirmed-soft:     var(--color-accent-2-soft);
+  --status-needs-attention:    oklch(66.3% 0.227 36);     /* #FF4800 laranja NEON */
+  --status-needs-attention-soft: oklch(94% 0.07 45);
+  --status-cancelled:          oklch(58% 0.012 260);      /* cinza azulado */
+  --status-cancelled-soft:     oklch(93% 0.008 260);
+
+  /* ---- Feedback semântico (versões legíveis p/ TEXTO) ------------------- */
+  --color-success: oklch(58% 0.20 140);  /* verde legível (não o lime neon) */
+  --color-warning: oklch(74% 0.16 70);
+  --color-danger:  oklch(57% 0.22 36);   /* laranja legível (não o neon)    */
+  --color-info:    var(--color-accent);
+
+  /* ---- Tipografia ------------------------------------------------------- */
+  --font-display: "Cabinet Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-body:    "Geist", ui-sans-serif, system-ui, sans-serif;
+  --font-data:    "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
+
+  --text-xs:    0.64rem;
+  --text-sm:    0.8rem;
+  --text-base:  1rem;
+  --text-md:    1.25rem;
+  --text-lg:    1.5625rem;
+  --text-xl:    1.9531rem;
+  --text-2xl:   2.4414rem;
+  --text-display: clamp(2.4414rem, 4vw + 1rem, 3.8147rem);
+
+  --leading-tight: 1.12;
+  --leading-snug:  1.3;
+  --leading-body:  1.55;
+
+  --tracking-display: -0.02em;
+  --tracking-tight:   -0.01em;
+  --tracking-label:   0.06em;
+
+  --weight-body:    400;
+  --weight-medium:  500;
+  --weight-display: 700;
+  --weight-heavy:   800;
+
+  /* ---- Espaçamento (4pt) ------------------------------------------------ */
+  --space-3xs: 0.125rem;
+  --space-2xs: 0.25rem;
+  --space-xs:  0.5rem;
+  --space-sm:  0.75rem;
+  --space-md:  1rem;
+  --space-lg:  1.5rem;
+  --space-xl:  2rem;
+  --space-2xl: 3rem;
+  --space-3xl: 4rem;
+
+  /* ---- Raios ------------------------------------------------------------ */
+  --radius-xs:   0.25rem;
+  --radius-sm:   0.375rem;
+  --radius-md:   0.625rem;
+  --radius-lg:   0.875rem;
+  --radius-pill: 999px;
+  --radius-full: 9999px;
+
+  /* ---- Elevação (sombras tênues, tinta azul) ---------------------------- */
+  --shadow-sm: 0 1px 2px oklch(20% 0.03 265 / 0.07);
+  --shadow-md: 0 2px 8px oklch(20% 0.03 265 / 0.10), 0 1px 2px oklch(20% 0.03 265 / 0.06);
+  --shadow-lg: 0 10px 30px oklch(20% 0.03 265 / 0.14), 0 2px 6px oklch(20% 0.03 265 / 0.07);
+
+  /* ---- Movimento -------------------------------------------------------- */
+  --ease-out:    cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in:     cubic-bezier(0.4, 0, 1, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 320ms;
+
+  /* ---- Layout ----------------------------------------------------------- */
+  --app-sidebar:    248px;
+  --app-maxw:       1280px;
+  --measure:        65ch;
+  --tap-min:        44px;
+}
+
+/* ---- Dark mode (token-ready; light é o padrão) ------------------------- */
+[data-theme="dark"] {
+  --color-paper:        oklch(16% 0.04 265);
+  --color-surface:      oklch(20% 0.045 265);
+  --color-surface-2:    oklch(25% 0.045 265);
+  --color-surface-sunk: oklch(13% 0.035 265);
+
+  --color-ink:    oklch(94% 0.012 260);
+  --color-ink-2:  oklch(78% 0.012 260);
+  --color-muted:  oklch(66% 0.012 260);
+  --color-faint:  oklch(52% 0.012 260);
+
+  --color-rule:        oklch(32% 0.025 263);
+  --color-rule-2:      oklch(26% 0.022 263);
+  --color-rule-strong: oklch(40% 0.03 263);
+
+  --color-accent:        oklch(64% 0.20 266);
+  --color-accent-strong: oklch(58% 0.21 266);
+  --color-accent-hover:  oklch(68% 0.19 266);
+  --color-accent-soft:   oklch(30% 0.10 265);
+  --color-accent-ink:    oklch(15% 0.03 265);
+  --color-focus:         oklch(70% 0.19 266);
+
+  --color-accent-2:        oklch(68% 0.22 293);
+  --color-accent-2-strong: oklch(64% 0.22 293);
+  --color-accent-2-soft:   oklch(30% 0.10 293);
+
+  --status-open:            oklch(70% 0.05 258);
+  --status-open-soft:       oklch(26% 0.03 258);
+  --status-accepted:        oklch(87% 0.27 141);
+  --status-accepted-soft:   oklch(28% 0.10 138);
+  --status-needs-attention: oklch(70% 0.21 38);
+  --status-needs-attention-soft: oklch(30% 0.09 40);
+  --status-cancelled:       oklch(62% 0.01 260);
+  --status-cancelled-soft:  oklch(24% 0.008 260);
+
+  --color-success: oklch(70% 0.19 140);
+  --color-danger:  oklch(70% 0.21 38);
+
+  --shadow-sm: 0 1px 2px oklch(0% 0 0 / 0.45);
+  --shadow-md: 0 2px 8px oklch(0% 0 0 / 0.5);
+  --shadow-lg: 0 10px 30px oklch(0% 0 0 / 0.6);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --dur-fast: 0ms; --dur-base: 0ms; --dur-slow: 0ms; }
+}
