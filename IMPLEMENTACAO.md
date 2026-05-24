@@ -3,7 +3,7 @@
 > Estado atual da implementação do Mini-WFM e próximos passos.
 > **Atualizar após cada feature grande. Revisar no início de cada sessão.**
 
-Última atualização: 2026-05-23 (Dia 1 fechado + fundações puras de auth — hashing e JWT)
+Última atualização: 2026-05-24 (Dia 2 fechado — camada Flask: auth + CRUD de médicos/plantões)
 
 ---
 
@@ -13,7 +13,7 @@
 |---|---|
 | Esqueleto do projeto | ✅ feito |
 | Schema do banco + state machines | ✅ feito |
-| Auth + CRUD básicos | 🟡 parcial (fundações puras prontas; faltam endpoints) |
+| Auth + CRUD básicos | ✅ feito |
 | Pipeline de ofertas + tick | ⏳ pendente |
 | Accept atômico (race condition) | ⏳ pendente |
 | Frontend (Hallmark + telas) | ⏳ pendente |
@@ -25,6 +25,40 @@
 ---
 
 ## Feito
+
+### Camada Flask — auth + CRUD de médicos/plantões (2026-05-24)
+
+Endpoints de verdade plugados nas fundações puras do Dia 1. Arquitetura
+em camadas: `api/` (blueprints finos) → `services/` (orquestração + transações)
+→ `models`. **74/74 testes passando** (`uv run pytest`), ruff limpo.
+
+- **App factory** `app/__init__.py` (`create_app`): injeta config em
+  `app.config`, liga DB, registra error handlers, CORS e blueprints.
+  Aceita `settings`/`session_factory` injetados (testabilidade). `GET /health`.
+- **`app/infra/db.py`**: engine + sessionmaker ligados ao request. Serviços
+  fazem `commit()` explícito; teardown só faz rollback/close (sem commit
+  mágico — deixa espaço pro `SELECT FOR UPDATE` do Dia 3).
+- **`app/api/errors.py`**: `ApiError` + subclasses (401/403/404/409/422) e
+  handlers que serializam tudo como `{"error": {code, message, details?}}`.
+  Captura `pydantic.ValidationError` → 422 campo-a-campo, HTTPException e 500.
+- **`app/api/security.py`**: `@require_role(*roles)` extrai Bearer, valida via
+  `jwt.verify`, guarda claims em `g`. Helpers `current_account_id/hospital_id`.
+- **Auth**: `app/services/auth.py` (erro idêntico p/ e-mail inexistente e senha
+  errada — anti-enumeração) + `POST /auth/login`, `GET /auth/me`.
+- **CRUD médicos** (`app/services/doctors.py` + blueprint): cria conta+médico+
+  especialidades (N:M)+afiliações numa transação; e-mail dup → 409 (tratado no
+  `flush`, não no commit); specialty inválida → 422. List (filtro por
+  specialty) e get.
+- **CRUD plantões** (`app/services/shifts.py` + blueprint): create/list/get
+  **escopados ao hospital da coordenadora** (claim). Plantão nasce `open`
+  (não dispara oferta). Plantão de outro hospital → 404 (não vaza existência).
+  Defaults de batch vêm de settings, sobrescrevíveis no body.
+- **`app/infra/jwt.py`**: `verify` agora aceita `now` injetável (simétrico com
+  `sign`) — corrigiu teste que apodreceu com a passagem do tempo.
+- **Testes de API contra Postgres real**: `conftest.py` com isolamento por
+  transação externa + savepoints (`join_transaction_mode="create_savepoint"`),
+  banco `munin_test` migrado. 23 testes novos de API (auth, guards de papel,
+  CRUD, scoping por hospital).
 
 ### Fundações puras de auth — hashing + JWT (2026-05-23)
 
@@ -97,16 +131,14 @@ Pronta pra ser usada pelos endpoints `/auth/login` e
 
 > Estes são os próximos itens em ordem. Ao começar uma sessão, ler daqui.
 
-### 1. Auth + CRUD (Dia 2)
+### 1. Auth + CRUD (Dia 2) ✅ 2026-05-24
 - [x] Hashing de senha com bcrypt em `app/infra/hashing.py` ✅ 2026-05-23
 - [x] JWT em `app/infra/jwt.py` (sign + verify) ✅ 2026-05-23
-- [ ] **App factory Flask** (`app/__init__.py` com `create_app()`,
-      registro de blueprints, error handlers padronizados)
-- [ ] Session SQLAlchemy / dependency injection nos handlers
-- [ ] `POST /auth/login` e `GET /auth/me` (usar `hashing.verify_password`
-      e `jwt.sign` já prontos)
-- [ ] Decorator `@require_role('coordenador')` (usa `jwt.verify`)
-- [ ] CRUD básico de médicos e plantões (com seleção via `specialty_id`)
+- [x] **App factory Flask** (`create_app()`, blueprints, error handlers) ✅
+- [x] Session SQLAlchemy / DI nos handlers (`app/infra/db.py`) ✅
+- [x] `POST /auth/login` e `GET /auth/me` ✅
+- [x] Decorator `@require_role(...)` ✅
+- [x] CRUD básico de médicos e plantões (com `specialty_id`) ✅
 
 ### 2. Pipeline de ofertas (Dia 2-3)
 - [ ] `POST /shifts/:id/offer` → cria batch 1
