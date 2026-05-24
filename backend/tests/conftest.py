@@ -12,15 +12,31 @@ por TEST_DATABASE_URL.
 from __future__ import annotations
 
 import os
+from datetime import datetime
+from uuid import UUID
 
 import pytest
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
 from app import create_app
 from app.infra.config import Settings
 from app.infra.hashing import hash_password
-from app.models import Account, Doctor, Hospital
+from app.models import (
+    Account,
+    Doctor,
+    DoctorHospitalAffiliation,
+    DoctorSpecialty,
+    Hospital,
+    Shift,
+)
+
+# Tabelas transacionais (tudo menos specialties, que vem da migração).
+_TRUNCATE_TABLES = (
+    "shift_assignments, shift_offers, swap_requests, audit_events, shifts, "
+    "doctor_unavailabilities, doctor_hospital_affiliations, doctor_specialties, "
+    "doctors, accounts, hospitals"
+)
 
 TEST_DATABASE_URL = os.environ.get(
     "TEST_DATABASE_URL",
@@ -118,6 +134,71 @@ def doctor_account(session):
     return account
 
 
+def seed_doctor(
+    session,
+    *,
+    name: str,
+    email: str,
+    specialty_ids: list[int],
+    hospital_ids: list[UUID],
+    password: str = "senha-medico",
+) -> Doctor:
+    """Cria conta+médico+especialidades+afiliações ativas e commita."""
+    account = Account(
+        email=email,
+        password_hash=hash_password(password),
+        role="medico",
+        hospital_id=None,
+    )
+    session.add(account)
+    session.flush()
+    doctor = Doctor(account_id=account.id, name=name)
+    session.add(doctor)
+    session.flush()
+    for sid in specialty_ids:
+        session.add(DoctorSpecialty(doctor_id=doctor.id, specialty_id=sid))
+    for hid in hospital_ids:
+        session.add(
+            DoctorHospitalAffiliation(
+                doctor_id=doctor.id, hospital_id=hid, status="active"
+            )
+        )
+    session.commit()
+    return doctor
+
+
+def seed_shift(
+    session,
+    *,
+    hospital_id: UUID,
+    starts_at: datetime,
+    ends_at: datetime,
+    specialty_id: int = 1,
+    status: str = "open",
+    rate_cents: int = 120000,
+    batch_size: int = 3,
+    batch_window_minutes: int = 30,
+    escalate_hours_before: int = 6,
+    current_batch: int = 0,
+) -> Shift:
+    shift = Shift(
+        hospital_id=hospital_id,
+        specialty_id=specialty_id,
+        starts_at=starts_at,
+        ends_at=ends_at,
+        rate_cents=rate_cents,
+        status=status,
+        current_batch=current_batch,
+        batch_size=batch_size,
+        batch_window_minutes=batch_window_minutes,
+        escalate_hours_before=escalate_hours_before,
+        version=0,
+    )
+    session.add(shift)
+    session.commit()
+    return shift
+
+
 def login(client, email: str, password: str) -> str:
     resp = client.post("/auth/login", json={"email": email, "password": password})
     assert resp.status_code == 200, resp.get_json()
@@ -126,3 +207,23 @@ def login(client, email: str, password: str) -> str:
 
 def auth_header(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
+
+
+# --- suporte ao teste de concorrência (conexões reais, sem savepoint) ------
+
+
+def truncate_all(engine) -> None:
+    with engine.begin() as conn:
+        conn.execute(text(f"TRUNCATE {_TRUNCATE_TABLES} RESTART IDENTITY CASCADE"))
+
+
+@pytest.fixture()
+def real_engine():
+    """Engine sem isolamento por savepoint — pro teste de aceite concorrente,
+    onde duas transações reais precisam competir de verdade. Limpa antes e
+    depois pra não interferir nos testes com savepoint."""
+    eng = create_engine(TEST_DATABASE_URL, future=True)
+    truncate_all(eng)
+    yield eng
+    truncate_all(eng)
+    eng.dispose()
