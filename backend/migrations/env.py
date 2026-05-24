@@ -16,7 +16,7 @@ database_url = os.environ.get("DATABASE_URL")
 if database_url:
     config.set_main_option("sqlalchemy.url", database_url)
 
-from app.models import Base
+from app.models import Base  # noqa: E402  (após set da URL, padrão do Alembic)
 
 target_metadata = Base.metadata
 

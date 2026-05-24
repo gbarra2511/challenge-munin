@@ -15,7 +15,6 @@ from app.domain.offer import (
     is_terminal,
 )
 
-
 VALID = [
     (OfferStatus.PENDING, OfferStatus.ACCEPTED),
     (OfferStatus.PENDING, OfferStatus.DECLINED),

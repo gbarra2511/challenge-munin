@@ -15,7 +15,6 @@ from app.domain.shift import (
     is_terminal,
 )
 
-
 VALID = [
     (ShiftStatus.OPEN, ShiftStatus.OFFERING),
     (ShiftStatus.OFFERING, ShiftStatus.OFFERING),
