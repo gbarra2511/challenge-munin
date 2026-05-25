@@ -1,0 +1,97 @@
+@import "tailwindcss";
+
+/* Sistema de design (fonte única, compartilhado com o preview estático) */
+@import "../../tokens.css";
+
+/* Liga as fontes carregadas pelo Next aos tokens (só no app). O preview
+   estático usa nomes literais; aqui usamos as variáveis do next/font. */
+:root {
+  --font-body: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-data: var(--font-jbmono), ui-monospace, "SFMono-Regular", monospace;
+  --font-display: "Cabinet Grotesk", var(--font-geist-sans), ui-sans-serif, sans-serif;
+}
+
+/* Mapeia os tokens pra utilities do Tailwind v4 (inline = referencia a var,
+   não copia o valor → o dark mode via [data-theme] continua funcionando). */
+@theme inline {
+  --color-paper: var(--color-paper);
+  --color-surface: var(--color-surface);
+  --color-surface-2: var(--color-surface-2);
+  --color-surface-sunk: var(--color-surface-sunk);
+  --color-ink: var(--color-ink);
+  --color-ink-2: var(--color-ink-2);
+  --color-muted: var(--color-muted);
+  --color-faint: var(--color-faint);
+  --color-rule: var(--color-rule);
+  --color-rule-2: var(--color-rule-2);
+  --color-rule-strong: var(--color-rule-strong);
+
+  --color-accent: var(--color-accent);
+  --color-accent-strong: var(--color-accent-strong);
+  --color-accent-hover: var(--color-accent-hover);
+  --color-accent-soft: var(--color-accent-soft);
+  --color-accent-ink: var(--color-accent-ink);
+  --color-accent-2: var(--color-accent-2);
+  --color-focus: var(--color-focus);
+
+  --color-open: var(--status-open);
+  --color-open-soft: var(--status-open-soft);
+  --color-offering: var(--status-offering);
+  --color-offering-soft: var(--status-offering-soft);
+  --color-accepted: var(--status-accepted);
+  --color-accepted-soft: var(--status-accepted-soft);
+  --color-confirmed: var(--status-confirmed);
+  --color-confirmed-soft: var(--status-confirmed-soft);
+  --color-attention: var(--status-needs-attention);
+  --color-attention-soft: var(--status-needs-attention-soft);
+  --color-cancelled: var(--status-cancelled);
+  --color-cancelled-soft: var(--status-cancelled-soft);
+
+  --color-success: var(--color-success);
+  --color-danger: var(--color-danger);
+  --color-warning: var(--color-warning);
+
+  --font-display: var(--font-display);
+  --font-sans: var(--font-body);
+  --font-mono: var(--font-data);
+
+  --radius-xs: var(--radius-xs);
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+}
+
+* { border-color: var(--color-rule); }
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: var(--leading-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Piso responsivo (design.md §8): nunca scroll horizontal no root. */
+html, body { overflow-x: clip; }
+
+::selection { background: var(--color-accent-soft); }
+
+.font-data { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+
+/* Pulse do ponto `offering` (design.md §5): opacity 1→0.4→1, 2s. Diz "vivo". */
+@keyframes status-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.animate-status-pulse { animation: status-pulse 2s var(--ease-in-out) infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-status-pulse { animation: none; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

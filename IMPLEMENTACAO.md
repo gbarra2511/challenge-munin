@@ -3,7 +3,7 @@
 > Estado atual da implementação do Mini-WFM e próximos passos.
 > **Atualizar após cada feature grande. Revisar no início de cada sessão.**
 
-Última atualização: 2026-05-24 (Dia 3 fechado — pipeline de ofertas + aceite atômico + 5 testes obrigatórios)
+Última atualização: 2026-05-24 (Dia 4 fechado — frontend setup + design system aplicado + login + /ofertas + /plantoes/novo)
 
 ---
 
@@ -16,7 +16,7 @@
 | Auth + CRUD básicos | ✅ feito |
 | Pipeline de ofertas + tick | ✅ feito |
 | Accept atômico (race condition) | ✅ feito |
-| Frontend (Hallmark + telas) | ⏳ pendente |
+| Frontend (Hallmark + telas) | 🔄 em andamento (Dia 4 ✅: base + login + ofertas + novo plantão) |
 | Deploy público + seed | ⏳ pendente |
 | Testes obrigatórios (5) | ✅ feito (5/5 + extras) |
 | README final | ⏳ pendente |
@@ -25,6 +25,44 @@
 ---
 
 ## Feito
+
+### Frontend Dia 4 — base + login + ofertas (médico) + novo plantão (coord) (2026-05-24)
+
+Scaffold Next 16 / React 19 / Tailwind v4 com o design system do Hallmark
+aplicado. `design.md` é **system-managed**: toda tela defere a ele + `tokens.css`.
+**`next build` verde, 10 rotas, TypeScript limpo.** Backend não roda ponta-a-ponta
+ainda (sem seed → sem contas) — validado por build + smoke render.
+
+- **Tokens → Tailwind v4**: `globals.css` importa `tokens.css` e mapeia tudo no
+  `@theme inline` (utilities `bg-surface`, `text-accent`, etc. confirmadas no CSS
+  de produção). Fontes: Geist + JetBrains Mono via `next/font`, Cabinet Grotesk via
+  Fontshare no `<link>`. Corrigida auto-referência potencial no `@theme` (funciona;
+  `--color-paper` resolve pra `#ddeaff`).
+- **Camada-base** (`src/lib/`): `api.ts` (fetch + Bearer + parse do envelope
+  `{error:{code,message}}` → `ApiError` tipado; 401 limpa o token), `auth.tsx`
+  (AuthProvider, token no localStorage, valida via `/auth/me` no mount), `types.ts`
+  (espelha os shapes reais da API — nada inventado), `format.ts` (R$, datas pt-BR,
+  countdown), `specialties.ts` (IDs fixos 1..8 da migration), `useCountdown.ts`
+  (relógio local 1×/s contra `expires_at`), `useRequireRole.ts` (guard por papel).
+  `providers.tsx`: TanStack Query + sonner Toaster re-tematizado.
+- **Primitivos** (`src/components/ui/`): `StatusPill` (o token central — soft bg +
+  texto ink + ponto/glyph na cor de status; `offering` pulsa), `Button`
+  (4 variantes, 44px, foco instantâneo) + `ButtonLink`, `Field` (Input/Select),
+  `Skeleton`, `EmptyState`, `ErrorState`.
+- **Shells**: coordenadora = sidebar fixa 248px (md+) / top-bar + nav (mobile);
+  médico = top-bar fina + **tab bar inferior** (alvos ≥44px). Ambos com guard.
+- **Login** (`/login`): RHF + Zod, anti-enumeração no erro, redireciona por papel.
+- **/ofertas** (médico, a estrela): cards com **countdown ao vivo** (cor muda <5min),
+  accept/decline via mutation, **toasts 409 ("acabou de ser preenchido") / 410
+  ("oferta expirou")**, `refetchInterval: 15s`. Loading=skeleton, empty com voz.
+- **/plantoes/novo** (coord): RHF + Zod (input≠output por `z.coerce`), datas
+  tz-aware (→ ISO Z), R$→cents, ajustes de pipeline opcionais. No sucesso, botão
+  **"Disparar ofertas agora"** (POST `/shifts/:id/offer` via ranking) — fecha o
+  loop coordenadora → médico.
+- **Telas-loop leves reais**: `/agenda` (aceitos do médico), `/plantoes` (lista da
+  coord). **Placeholders honestos** ("Em construção — Dia 5"): `/dashboard`,
+  `/calendario`, `/historico`.
+- Pisos do `design.md`: `overflow-x: clip` no root, reduced-motion global.
 
 ### Pipeline de ofertas + aceite atômico + 5 testes obrigatórios (2026-05-24)
 
@@ -191,13 +229,20 @@ Pronta pra ser usada pelos endpoints `/auth/login` e
 - [x] **Teste de race condition com 2 threads** passando (8× sem flaky) ✅
 
 ### 4. Frontend (Dia 4-6)
-- [ ] Invocar `/hallmark` para gerar tokens + princípios
-- [ ] `pnpm create next-app frontend` (Next 16, App Router, TS, Tailwind 4)
-- [ ] Instalar shadcn/ui, TanStack Query, React Hook Form, Zod, sonner
-- [ ] Auth flow (login + cookie JWT)
-- [ ] Telas coordenadora: dashboard, calendário, detalhe, criar
-- [ ] Telas médico: ofertas (com countdown), aceitos, histórico
-- [ ] Empty/loading/error states em tudo
+- [x] Invocar `/hallmark` → `frontend/design.md` + `frontend/tokens.css` ✅ 2026-05-24
+      (custom: base clara, accent laranja-vermelho OKLCH, Cabinet Grotesk +
+      Geist + JetBrains Mono; status `offering` = accent)
+- [x] `create-next-app frontend` (Next 16, App Router, TS, Tailwind 4) ✅ 2026-05-24
+- [x] Instalar TanStack Query, React Hook Form (+resolvers), Zod, sonner, geist ✅
+      (shadcn não usado — primitivos próprios re-tematizados nos tokens)
+- [x] Auth flow (login + JWT no localStorage + Bearer; guard por papel) ✅
+- [x] Tela médico **/ofertas** (countdown ao vivo + accept/decline 409/410) ✅
+- [x] Tela coord **/plantoes/novo** (RHF+Zod + dispara ofertas) ✅
+- [x] Empty/loading/error states + toasts (base do design.md §7) ✅
+- [ ] **Dia 5** — coord: dashboard (KPIs + tabela de risco), calendário semanal,
+      detalhe `/plantoes/:id` com timeline do audit log
+- [ ] **Dia 5** — médico: histórico paginado; agenda como calendário
+- [ ] Sidebar→drawer real <768px (hoje colapsa pra top-bar + nav horizontal)
 
 ### 5. Deploy (Dia 6)
 - [ ] Backend → Fly.io (Dockerfile + `fly launch`)

@@ -1,0 +1,81 @@
+// Tipos espelhando os shapes REAIS da API Flask (backend/app/api/*).
+// Mantém o frontend honesto: nenhum campo inventado.
+
+export type Role = "coordenador" | "medico";
+
+export type ShiftStatus =
+  | "open"
+  | "offering"
+  | "accepted"
+  | "confirmed"
+  | "needs_attention"
+  | "cancelled";
+
+export type OfferStatus =
+  | "pending"
+  | "accepted"
+  | "declined"
+  | "expired"
+  | "superseded";
+
+export interface Account {
+  id: string;
+  email: string;
+  role: Role;
+  hospital_id: string | null;
+}
+
+export interface LoginResponse {
+  token: string;
+  account: Account;
+}
+
+// shift embutido em /me/offers e /me/assignments (subconjunto do shift_view)
+export interface EmbeddedShift {
+  id: string;
+  hospital_id?: string;
+  specialty_id: number;
+  starts_at: string; // ISO 8601 com offset
+  ends_at: string;
+  rate_cents: number;
+  status: ShiftStatus;
+}
+
+export interface Offer {
+  id: string;
+  status: OfferStatus;
+  batch_number: number;
+  sent_at: string;
+  expires_at: string;
+  shift: EmbeddedShift;
+}
+
+export interface Assignment {
+  id: string;
+  status: string; // "active" | ...
+  accepted_at: string;
+  shift: EmbeddedShift;
+}
+
+// shift_view completo (services/shifts.py::shift_view)
+export interface Shift {
+  id: string;
+  hospital_id: string;
+  specialty_id: number;
+  starts_at: string;
+  ends_at: string;
+  rate_cents: number;
+  status: ShiftStatus;
+  current_batch: number;
+  batch_size: number;
+  batch_window_minutes: number;
+  escalate_hours_before: number;
+  version: number;
+  created_at: string | null;
+}
+
+export interface AcceptResult {
+  shift_id: string;
+  offer_id: string;
+  status: "accepted";
+}

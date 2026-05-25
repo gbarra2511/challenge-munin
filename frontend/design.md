@@ -24,11 +24,12 @@ correndo, que pede ação — É a cor de marca (índigo elétrico `#040DC1`). A
 mais chama atenção marca exatamente o estado que mais precisa de atenção. O resto
 da interface é quase monocromático azul; o índigo é cirúrgico (≤5% da viewport).
 
-**Base fria, um acento quente:** o canvas é azul-claro (`#DDEAFF`), os cards são
-near-white e saltam dele, e tudo é frio (índigo + ciano) — exceto **uma única**
-cor quente em todo o sistema: o vermelho-alarme do `needs_attention`. Interface
-clínica e calma, com um único ponto laranja que diz "aja agora" (complementar do
-índigo). Essa tensão é o "inovador".
+**Base fria, dois neons de sinal:** o canvas é azul-claro (`#DDEAFF`), os cards são
+near-white e saltam dele, e quase tudo é frio (índigo + violeta) — exceto **dois
+neons de alta energia** reservados a status: lime `accepted` (`#48FF00`) e laranja
+`needs_attention` (`#FF4800` — o único quente, complementar do índigo, salta como
+alarme). Interface clínica e calma, com sinais elétricos cirúrgicos. Essa tensão é
+o "inovador".
 
 Tom: **confiável, calmo, denso, não-genérico.** Nada de gradiente roxo-ciano,
 nada de card 3-features, nada de hero gigante. É um app, não uma landing.
