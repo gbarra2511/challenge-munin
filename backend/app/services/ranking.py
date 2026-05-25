@@ -143,12 +143,15 @@ def _offer_stats_bulk(session: Session, doctor_ids: list[UUID]) -> dict[UUID, di
 
     result: dict[UUID, dict[str, Any]] = {}
     for row in session.execute(stmt):
+        avg = row.avg_response_seconds
         result[row.doctor_id] = {
             "accepted": row.accepted or 0,
             "declined": row.declined or 0,
             "expired": row.expired or 0,
             "total": row.total or 0,
-            "avg_response_seconds": row.avg_response_seconds,
+            # func.avg devolve Decimal; coage pra float aqui senão o scoring
+            # (Decimal * float) e a serialização JSON quebram.
+            "avg_response_seconds": float(avg) if avg is not None else None,
         }
     return result
 

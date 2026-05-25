@@ -178,10 +178,9 @@ def update_doctor(
 
     if specialty_ids is not None:
         _validate_specialties(session, specialty_ids)
-        # Remove existentes e recria
-        session.execute(select(DoctorSpecialty).where(DoctorSpecialty.doctor_id == doctor.id))
         from sqlalchemy import delete
 
+        # Remove as existentes e recria (set de especialidades é substituído).
         session.execute(delete(DoctorSpecialty).where(DoctorSpecialty.doctor_id == doctor.id))
         for sid in set(specialty_ids):
             session.add(DoctorSpecialty(doctor_id=doctor.id, specialty_id=sid))
@@ -253,7 +252,8 @@ def doctor_stats(
 
     avg_response_min = None
     if offer_row.avg_response_seconds is not None:
-        avg_response_min = round(offer_row.avg_response_seconds / 60, 1)
+        # func.avg devolve Decimal — jsonify do Flask não serializa Decimal.
+        avg_response_min = round(float(offer_row.avg_response_seconds) / 60, 1)
 
     # Assignment stats
     assign_row = session.execute(

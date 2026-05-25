@@ -3,7 +3,7 @@
 O coração do sistema. Duas peças críticas:
 
 1. `accept_offer` — aceite atômico (PLANO §6). Lock pessimista em
-   offer→shift (sempre nessa ordem, pra não dar deadlock entre dois
+   shift→offer (sempre nessa ordem, pra não dar deadlock entre dois
    aceites concorrentes) + o índice único parcial em shift_assignments
    como defesa em profundidade.
 2. `run_tick` — avanço idempotente do pipeline (PLANO §7). Só faz
