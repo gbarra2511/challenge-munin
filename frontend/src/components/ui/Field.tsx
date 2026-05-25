@@ -36,9 +36,11 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   const inputId = id ?? name;
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={inputId} className="text-sm font-medium text-ink-2">
-        {label}
-      </label>
+      {label && (
+        <label htmlFor={inputId} className="text-sm font-medium text-ink-2">
+          {label}
+        </label>
+      )}
       <input
         ref={ref}
         id={inputId}
@@ -65,9 +67,11 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
   const selectId = id ?? name;
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={selectId} className="text-sm font-medium text-ink-2">
-        {label}
-      </label>
+      {label && (
+        <label htmlFor={selectId} className="text-sm font-medium text-ink-2">
+          {label}
+        </label>
+      )}
       <select
         ref={ref}
         id={selectId}
