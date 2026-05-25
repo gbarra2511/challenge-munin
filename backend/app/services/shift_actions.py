@@ -17,7 +17,7 @@ from app.domain import shift as shift_sm
 from app.domain.shift import ShiftStatus
 from app.models import Doctor, Shift, ShiftAssignment, ShiftOffer
 from app.services.audit import record_event
-from app.services.ranking import eligible_doctors
+from app.services.ranking import eligible_doctors, ranked_doctors
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -119,6 +119,47 @@ def expand_pool(
     session.commit()
     session.refresh(shift)
     return {"shift": shift, "new_offers": len(candidates)}
+
+
+def get_shift_ranking(
+    session: Session,
+    *,
+    shift_id: UUID,
+    hospital_id: UUID,
+    limit: int = 10,
+) -> list[dict[str, Any]]:
+    """Ranking explicável dos médicos elegíveis para um plantão (Bônus Tier 1,
+    PLANO §13). Expõe o breakdown que o tick/oferta usam internamente, pra a
+    coordenadora ver QUEM seria ofertado e POR QUÊ. `already_offered` marca
+    quem já recebeu oferta neste plantão (em qualquer batch)."""
+    shift = session.get(Shift, shift_id)
+    if shift is None or shift.hospital_id != hospital_id:
+        raise NotFound("shift not found")
+
+    already = set(
+        session.scalars(select(ShiftOffer.doctor_id).where(ShiftOffer.shift_id == shift_id))
+    )
+    ranked = ranked_doctors(session, shift)
+    return [
+        {
+            "doctor": {"id": str(r.doctor.id), "name": r.doctor.name},
+            "score": r.score,
+            "already_offered": r.doctor.id in already,
+            "breakdown": {
+                "acceptance_rate": r.breakdown.acceptance_rate,
+                "days_since_last": r.breakdown.days_since_last,
+                "weekly_load": r.breakdown.weekly_load,
+                "avg_response_min": r.breakdown.avg_response_min,
+                "scores": {
+                    "acceptance": r.breakdown.score_acceptance,
+                    "recency": r.breakdown.score_recency,
+                    "load": r.breakdown.score_load,
+                    "response": r.breakdown.score_response,
+                },
+            },
+        }
+        for r in ranked[:limit]
+    ]
 
 
 def get_shift_offers(

@@ -80,10 +80,20 @@ indisponibilidades, perfil) estavam **sem testes**. Fechado esse flanco com
 - Limpezas: docstring de `offers.py` dizia "offer→shift" (a ordem real é
   shift→offer); `select` morto em `update_doctor`.
 
-**Gap conhecido** (candidato a "adicionar mais"): o `breakdown` explicável do
-ranking é calculado a cada oferta/tick e **descartado** — nenhum endpoint o
-expõe. O valor do bônus Tier 1 (PLANO §13) é mostrar o *motivo* do ranking na
-tela de detalhe; falta o endpoint + a UI.
+### Ranking explicável exposto na UI (Bônus Tier 1 completo) (2026-05-25)
+
+Fecha o gap acima: o `breakdown` deixou de ser código morto e virou o bônus
+Tier 1 de verdade (PLANO §13 — mostrar o *motivo* do ranking).
+
+- **Backend** `GET /shifts/:id/ranking` (coord, escopado ao hospital):
+  `shift_actions.get_shift_ranking` serializa os médicos elegíveis ordenados
+  por score, com breakdown (aceite/recência/carga/resposta) e flag
+  `already_offered`. +1 teste (111 total) cobrindo ordem, flag e serialização.
+- **Frontend** `components/RankingCard.tsx` + card na tela de detalhe do
+  plantão: posição, score (barra), nome, badge "já ofertado" e motivos em
+  pt-BR ("aceita 80% das ofertas · 6d sem plantão · responde em ~4min").
+  Aparece enquanto o plantão está open/offering/needs_attention; refetch 30s.
+- Limpeza: import morto `DoctorStats` em `medicos/page.tsx`. ESLint limpo.
 
 ### Dia 6 — Endpoints faltantes + fixes + features frontend + qualidade (2026-05-25)
 

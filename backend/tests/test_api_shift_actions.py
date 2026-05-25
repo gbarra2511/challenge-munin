@@ -157,6 +157,46 @@ def test_get_shift_offers_returns_doctor_names(client, session, coordinator, hos
     assert offers[0]["batch_number"] == 1
 
 
+def test_shift_ranking_exposes_breakdown_and_offered_flag(
+    client, session, coordinator, hospital
+) -> None:
+    token = _coord(client)
+    top = seed_doctor(
+        session, name="Top", email="top@t.test", specialty_ids=[1], hospital_ids=[hospital.id]
+    )
+    seed_doctor(
+        session, name="Other", email="oth@t.test", specialty_ids=[1], hospital_ids=[hospital.id]
+    )
+    shift = _offering_shift(session, hospital)
+    # `top` já recebeu oferta neste plantão e respondeu (gera histórico/score).
+    session.add(
+        ShiftOffer(
+            shift_id=shift.id,
+            doctor_id=top.id,
+            batch_number=1,
+            status="accepted",
+            sent_at=FAR - timedelta(days=10),
+            expires_at=FAR - timedelta(days=10) + timedelta(minutes=30),
+            responded_at=FAR - timedelta(days=10) + timedelta(minutes=3),
+        )
+    )
+    session.commit()
+
+    resp = client.get(f"/shifts/{shift.id}/ranking", headers=auth_header(token))
+    assert resp.status_code == 200, resp.get_json()
+    ranking = resp.get_json()["ranking"]
+    assert {r["doctor"]["name"] for r in ranking} == {"Top", "Other"}
+
+    by_name = {r["doctor"]["name"]: r for r in ranking}
+    assert by_name["Top"]["already_offered"] is True
+    assert by_name["Other"]["already_offered"] is False
+    # breakdown explicável presente e serializável (sem Decimal).
+    bd = by_name["Top"]["breakdown"]
+    assert bd["acceptance_rate"] == 1.0
+    assert bd["avg_response_min"] == 3.0
+    assert set(bd["scores"]) == {"acceptance", "recency", "load", "response"}
+
+
 def test_shift_actions_require_coordinator(client, session, doctor_account, hospital) -> None:
     token = login(client, "medico@central.test", "senha-medico")
     shift = _offering_shift(session, hospital)

@@ -118,6 +118,27 @@ export interface DoctorStats {
   total_assignments: number;
 }
 
+// Ranking explicável (GET /shifts/:id/ranking) — bônus Tier 1
+export interface RankingBreakdown {
+  acceptance_rate: number | null; // 0..1
+  days_since_last: number | null;
+  weekly_load: number;
+  avg_response_min: number | null;
+  scores: {
+    acceptance: number;
+    recency: number;
+    load: number;
+    response: number;
+  };
+}
+
+export interface ShiftRankingEntry {
+  doctor: { id: string; name: string };
+  score: number; // 0..100
+  already_offered: boolean;
+  breakdown: RankingBreakdown;
+}
+
 // Indisponibilidade
 export interface Unavailability {
   id: string;

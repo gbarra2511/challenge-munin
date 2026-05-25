@@ -15,7 +15,8 @@ import { formatBRL, formatShiftWindow } from "@/lib/format";
 import { specialtyName } from "@/lib/specialties";
 import { statusColor, statusLabel } from "@/lib/status";
 import { type AuditEvent, describeEvent } from "@/lib/timeline";
-import type { Shift, ShiftOfferDetail } from "@/lib/types";
+import type { Shift, ShiftOfferDetail, ShiftRankingEntry } from "@/lib/types";
+import { RankingCard } from "@/components/RankingCard";
 
 interface DoctorLite {
   id: string;
@@ -49,6 +50,15 @@ export default function PlantaoDetailPage() {
     refetchInterval: 15_000,
     // Só busca quando o shift não está mais em 'open' (já teve ofertas)
     enabled: !!shiftQ.data && shiftQ.data.shift.status !== "open",
+  });
+  // Ranking explicável: útil enquanto o plantão ainda está sendo preenchido.
+  const rankingActive = !!shiftQ.data &&
+    ["open", "offering", "needs_attention"].includes(shiftQ.data.shift.status);
+  const rankingQ = useQuery({
+    queryKey: ["shift", id, "ranking"],
+    queryFn: () => api<{ ranking: ShiftRankingEntry[] }>(`/shifts/${id}/ranking`),
+    refetchInterval: 30_000,
+    enabled: rankingActive,
   });
 
   // ---- Derived ----
@@ -236,6 +246,29 @@ export default function PlantaoDetailPage() {
                   )}
                 </div>
               </Card>
+
+              {/* Ranking explicável (bônus Tier 1) */}
+              {rankingActive && (
+                <Card className="p-5">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <h2 className="font-display text-lg font-bold text-ink">
+                      Ranking de médicos
+                    </h2>
+                    <span className="text-xs text-faint">
+                      especialidade · aceite · carga · resposta
+                    </span>
+                  </div>
+                  {rankingQ.isLoading ? (
+                    <Skeleton className="mt-4 h-32 w-full" />
+                  ) : rankingQ.isError ? (
+                    <p className="mt-3 text-sm text-muted">
+                      Não foi possível carregar o ranking.
+                    </p>
+                  ) : (
+                    <RankingCard entries={rankingQ.data?.ranking ?? []} />
+                  )}
+                </Card>
+              )}
 
               {/* Timeline (do audit log) */}
               <Card className="p-5">

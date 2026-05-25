@@ -9,7 +9,7 @@ import { Select } from "@/components/ui/Field";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ApiError, api } from "@/lib/api";
 import { specialtyName, SPECIALTIES } from "@/lib/specialties";
-import type { DoctorListItem, DoctorStats } from "@/lib/types";
+import type { DoctorListItem } from "@/lib/types";
 
 export default function MedicosPage() {
   const [search, setSearch] = useState("");

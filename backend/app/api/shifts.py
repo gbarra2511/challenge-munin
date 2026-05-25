@@ -13,7 +13,12 @@ from app.api.security import current_account_id, current_hospital_id, require_ro
 from app.infra.db import get_session
 from app.models import AuditEvent, Shift
 from app.services.offers import open_offers
-from app.services.shift_actions import cancel_shift, expand_pool, get_shift_offers
+from app.services.shift_actions import (
+    cancel_shift,
+    expand_pool,
+    get_shift_offers,
+    get_shift_ranking,
+)
 from app.services.shifts import create_shift, list_shifts, shift_view
 
 bp = Blueprint("shifts", __name__, url_prefix="/shifts")
@@ -126,6 +131,19 @@ def shift_offers_list(shift_id):  # type: ignore[no-untyped-def]
         hospital_id=current_hospital_id(),
     )
     return jsonify({"offers": offers})
+
+
+@bp.get("/<uuid:shift_id>/ranking")
+@require_role("coordenador")
+def ranking(shift_id):  # type: ignore[no-untyped-def]
+    session = get_session()
+    return jsonify(
+        {
+            "ranking": get_shift_ranking(
+                session, shift_id=shift_id, hospital_id=current_hospital_id()
+            )
+        }
+    )
 
 
 @bp.get("/<uuid:shift_id>/audit")
