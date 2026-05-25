@@ -3,7 +3,7 @@
 > Estado atual da implementação do Mini-WFM e próximos passos.
 > **Atualizar após cada feature grande. Revisar no início de cada sessão.**
 
-Última atualização: 2026-05-24 (Dia 4 fechado — frontend setup + design system aplicado + login + /ofertas + /plantoes/novo)
+Última atualização: 2026-05-24 (Dia 5 fechado — dashboard + calendário + detalhe do plantão com timeline)
 
 ---
 
@@ -16,7 +16,7 @@
 | Auth + CRUD básicos | ✅ feito |
 | Pipeline de ofertas + tick | ✅ feito |
 | Accept atômico (race condition) | ✅ feito |
-| Frontend (Hallmark + telas) | 🔄 em andamento (Dia 4 ✅: base + login + ofertas + novo plantão) |
+| Frontend (Hallmark + telas) | 🔄 em andamento (Dias 4–5 ✅: auth + todas as telas-núcleo) |
 | Deploy público + seed | ⏳ pendente |
 | Testes obrigatórios (5) | ✅ feito (5/5 + extras) |
 | README final | ⏳ pendente |
@@ -25,6 +25,27 @@
 ---
 
 ## Feito
+
+### Frontend Dia 5 — dashboard + calendário + detalhe com timeline (2026-05-24)
+
+As três telas da coordenadora, **todas derivadas de endpoints existentes**
+(sem mexer no backend). `next build` verde, 11 rotas, TypeScript limpo.
+3 commits (um por tela): `7c83b71`, `e2c3335`, `b97c3d5`.
+
+- **/dashboard**: 4 KPIs (abertos · em oferta · preenchidos · em risco),
+  barras dos próximos 7 dias empilhadas por status, e tabela "Plantões em
+  risco" (`needs_attention` OU começa em <12h sem aceite, ordenada por
+  urgência, linkando ao detalhe). Tudo de `GET /shifts` com refetch 15s.
+- **/calendario**: grade semanal (segunda→domingo) com navegação de semana,
+  filtro por especialidade client-side, chips coloridos por status linkando
+  ao detalhe. Empilha no mobile, 7 colunas no desktop (sem scroll horizontal).
+- **/plantoes/:id**: resumo + **timeline humanizada do audit log**
+  (`GET /shifts/:id/audit` + `/doctors` p/ mapear nomes): "Lote 1 enviado para
+  Dr. A, Dr. B · recusou · expirou · Lote 2…". "Disparar ofertas" quando aberto.
+- Infra compartilhada: `lib/status.ts` (meta única de status, StatusPill agora
+  consome), `lib/week.ts`, `lib/timeline.ts`, componente `Card`.
+- **Pendente de backend** (PLANO §8, ainda sem endpoint): `POST /shifts/:id/cancel`,
+  `/expand-pool`, marcar preenchido manualmente. Detalhe mostra nota honesta.
 
 ### Frontend Dia 4 — base + login + ofertas (médico) + novo plantão (coord) (2026-05-24)
 
@@ -239,10 +260,12 @@ Pronta pra ser usada pelos endpoints `/auth/login` e
 - [x] Tela médico **/ofertas** (countdown ao vivo + accept/decline 409/410) ✅
 - [x] Tela coord **/plantoes/novo** (RHF+Zod + dispara ofertas) ✅
 - [x] Empty/loading/error states + toasts (base do design.md §7) ✅
-- [ ] **Dia 5** — coord: dashboard (KPIs + tabela de risco), calendário semanal,
-      detalhe `/plantoes/:id` com timeline do audit log
-- [ ] **Dia 5** — médico: histórico paginado; agenda como calendário
-- [ ] Sidebar→drawer real <768px (hoje colapsa pra top-bar + nav horizontal)
+- [x] **Dia 5** — coord: dashboard (KPIs + tabela de risco), calendário semanal,
+      detalhe `/plantoes/:id` com timeline do audit log ✅ 2026-05-24
+- [ ] **Backend p/ ações do detalhe** (PLANO §8): `POST /shifts/:id/cancel`,
+      `/expand-pool`, marcar preenchido manualmente (precisam de service + teste)
+- [ ] **Polish** — médico: histórico paginado; agenda como calendário pessoal;
+      sidebar→drawer real <768px (hoje colapsa pra top-bar + nav horizontal)
 
 ### 5. Deploy (Dia 6)
 - [ ] Backend → Fly.io (Dockerfile + `fly launch`)

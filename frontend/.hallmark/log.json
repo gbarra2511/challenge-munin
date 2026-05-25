@@ -5,6 +5,14 @@
     "theme": "custom",
     "theme_axes": "light / geometric-sans / cool",
     "enrichment": "none",
+    "brief": "Dia 5 — dashboard (KPIs + risco + barras 7 dias), calendário semanal (filtro por especialidade), detalhe /plantoes/:id com timeline humanizada do audit log; lib/status.ts + Card compartilhados"
+  },
+  {
+    "date": "2026-05-24",
+    "macrostructure": "n/a — telas de app (system-managed, design.md §6)",
+    "theme": "custom",
+    "theme_axes": "light / geometric-sans / cool",
+    "enrichment": "none",
     "brief": "Dia 4 — login + /ofertas (countdown ao vivo, accept/decline 409/410) + /plantoes/novo (RHF+Zod, dispara ofertas via ranking) + shells coordenadora/médico + primitivos (StatusPill, Button, Skeleton, EmptyState, ErrorState, Field)"
   },
   {
