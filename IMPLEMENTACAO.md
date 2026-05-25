@@ -7,6 +7,28 @@
 
 ---
 
+## Como rodar e acessar (local)
+
+**Subir tudo (do repo root):**
+1. `colima start && docker compose up -d` — Postgres `munin-postgres` na :5432.
+2. Backend: `cd backend` →
+   `export DATABASE_URL="postgresql+psycopg://munin:munin@localhost:5432/munin"` →
+   `uv run alembic upgrade head` →
+   `FLASK_APP="app:create_app" uv run flask run --port 5000 --host 127.0.0.1`
+3. Seed: `curl -X POST http://127.0.0.1:5000/admin/seed -H "Authorization: Bearer dev-only-change-me-admin"`
+4. Frontend: `cd frontend && npm install && npm run dev` → http://localhost:3000
+   (API via `NEXT_PUBLIC_API_URL`, default `http://127.0.0.1:5000` — ver `.env.example`).
+
+**Credenciais de demo (seed, senha `123456`):**
+- Coordenadora: `coordenadora@hospital.com`
+- Médico (demo, com 2 ofertas + 1 aceito): `medico@hospital.com`
+- Outros médicos: `medico1@hospital.com` … `medico29@hospital.com`
+
+**Gotcha macOS:** use `127.0.0.1` (não `localhost`) pra API — a porta 5000 em
+IPv6/`::1` é do AirPlay Receiver. O frontend já aponta pra `127.0.0.1` via `.env.local`.
+
+---
+
 ## Status global
 
 | Bloco | Status |

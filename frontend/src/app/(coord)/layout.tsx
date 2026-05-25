@@ -1,7 +1,8 @@
 "use client";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth";
+import { useLogout } from "@/lib/useLogout";
 import { useRequireRole } from "@/lib/useRequireRole";
 
 const NAV = [
@@ -16,8 +17,8 @@ export default function CoordLayout({
   children: React.ReactNode;
 }) {
   const { ok, ready } = useRequireRole("coordenador");
-  const { account, logout } = useAuth();
-  const router = useRouter();
+  const { account } = useAuth();
+  const doLogout = useLogout();
   const pathname = usePathname();
 
   if (!ready || !ok) {
@@ -80,10 +81,7 @@ export default function CoordLayout({
             {account?.email}
           </p>
           <button
-            onClick={() => {
-              logout();
-              router.replace("/login");
-            }}
+            onClick={doLogout}
             className="mt-1 text-sm text-muted underline-offset-4 hover:text-ink hover:underline"
           >
             Sair
@@ -93,15 +91,30 @@ export default function CoordLayout({
 
       {/* Top bar (mobile < md) */}
       <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-rule bg-[var(--color-paper)]/90 px-4 py-3 backdrop-blur md:hidden">
-        <span className="font-display text-lg font-extrabold tracking-[-0.02em]">
-          Munin
-        </span>
-        <Link
-          href="/plantoes/novo"
-          className="flex h-9 items-center gap-1.5 rounded-[var(--radius-sm)] bg-[var(--color-accent)] px-3 text-sm font-medium text-[var(--color-accent-ink)]"
-        >
-          <span aria-hidden>＋</span> Novo
-        </Link>
+        <div className="flex min-w-0 items-baseline gap-2">
+          <span className="font-display text-lg font-extrabold tracking-[-0.02em]">
+            Munin
+          </span>
+          {account?.email && (
+            <span className="hidden truncate text-xs text-muted sm:inline">
+              {account.email}
+            </span>
+          )}
+        </div>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <button
+            onClick={doLogout}
+            className="h-9 rounded-[var(--radius-sm)] px-2.5 text-sm font-medium text-muted hover:bg-[var(--color-surface-2)] hover:text-ink"
+          >
+            Sair
+          </button>
+          <Link
+            href="/plantoes/novo"
+            className="flex h-9 items-center gap-1.5 rounded-[var(--radius-sm)] bg-[var(--color-accent)] px-3 text-sm font-medium text-[var(--color-accent-ink)]"
+          >
+            <span aria-hidden>＋</span> Novo
+          </Link>
+        </div>
       </header>
       <nav className="sticky top-[57px] z-10 flex gap-1 overflow-x-auto border-b border-rule bg-[var(--color-surface)] px-2 py-2 md:hidden">
         {navItems("row")}

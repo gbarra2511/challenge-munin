@@ -11,13 +11,20 @@ import { StatusPill } from "@/components/ui/StatusPill";
 import { ApiError, api } from "@/lib/api";
 import { formatShiftWindow, msUntil } from "@/lib/format";
 import { specialtyName } from "@/lib/specialties";
-import { isFilled, isOpenish, statusColor, statusLabel } from "@/lib/status";
+import {
+  STATUS_META,
+  isFilled,
+  isOpenish,
+  statusColor,
+  statusLabel,
+  statusSoft,
+} from "@/lib/status";
 import type { Shift } from "@/lib/types";
 
 const HOUR = 3_600_000;
 const RISK_WINDOW_H = 12; // <12h sem aceite = em risco (PLANO §9)
+const CHART_H = 120;
 
-// "em 5h" · "em 3d" · "em andamento" · "encerrado"
 function relStart(iso: string): string {
   const ms = msUntil(iso);
   if (ms <= 0) return "em andamento";
@@ -41,14 +48,8 @@ const KPIS = [
   { key: "needs_attention", label: "Em risco" },
 ] as const;
 
-// Cores do empilhamento das barras (sem cancelled, que é ruído).
-const BAR_STATUSES = [
-  "needs_attention",
-  "offering",
-  "open",
-  "accepted",
-  "confirmed",
-];
+// Ordem de empilhamento + legenda (sem cancelled, que é ruído no overview).
+const BAR_STATUSES = ["needs_attention", "offering", "open", "accepted", "confirmed"];
 
 export default function DashboardPage() {
   const { data, isLoading, isError, error, refetch } = useQuery({
@@ -74,9 +75,9 @@ export default function DashboardPage() {
       .filter(isAtRisk)
       .sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at));
 
-    // Próximos 7 dias a partir de hoje (00h local).
     const start = new Date();
     start.setHours(0, 0, 0, 0);
+    const present = new Set<string>();
     const days = Array.from({ length: 7 }, (_, i) => {
       const day = new Date(start);
       day.setDate(start.getDate() + i);
@@ -87,12 +88,16 @@ export default function DashboardPage() {
         return t >= +day && t < +next;
       });
       const byStatus: Record<string, number> = {};
-      for (const s of inDay) byStatus[s.status] = (byStatus[s.status] ?? 0) + 1;
+      for (const s of inDay) {
+        byStatus[s.status] = (byStatus[s.status] ?? 0) + 1;
+        present.add(s.status);
+      }
       return { day, total: inDay.length, byStatus };
     });
     const maxTotal = Math.max(1, ...days.map((d) => d.total));
+    const legend = BAR_STATUSES.filter((s) => present.has(s));
 
-    return { counts, risk, days, maxTotal };
+    return { counts, risk, days, maxTotal, legend };
   }, [data]);
 
   return (
@@ -120,70 +125,111 @@ export default function DashboardPage() {
       {isLoading && (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           {[0, 1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-24" />
+            <Skeleton key={i} className="h-28" />
           ))}
         </div>
       )}
 
       {data && (
         <>
-          {/* KPIs */}
-          <section className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            {KPIS.map((k) => (
-              <Card key={k.key} className="p-5">
-                <div className="flex items-center gap-2">
-                  <span
-                    aria-hidden
-                    className="text-xs"
-                    style={{ color: statusColor(k.key) }}
+          {/* KPIs — glyph distinto por status (○ ● ✓ ▲), risco destacado */}
+          <section className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+            {KPIS.map((k) => {
+              const count = view.counts[k.key];
+              const alert = k.key === "needs_attention" && count > 0;
+              return (
+                <Card
+                  key={k.key}
+                  className="p-5"
+                  style={
+                    alert
+                      ? {
+                          borderColor: statusColor(k.key),
+                          background: statusSoft(k.key),
+                        }
+                      : undefined
+                  }
+                >
+                  <div className="flex items-center gap-2">
+                    <span
+                      aria-hidden
+                      className="text-base leading-none"
+                      style={{ color: statusColor(k.key) }}
+                    >
+                      {STATUS_META[k.key].glyph}
+                    </span>
+                    <span className="text-sm text-muted">{k.label}</span>
+                  </div>
+                  <p
+                    className="font-display mt-2 text-4xl font-extrabold tabular-nums tracking-[-0.02em]"
+                    style={{ color: alert ? statusColor(k.key) : "var(--color-ink)" }}
                   >
-                    ●
-                  </span>
-                  <span className="text-sm text-muted">{k.label}</span>
-                </div>
-                <p className="font-display mt-2 text-4xl font-extrabold tabular-nums tracking-[-0.02em] text-ink">
-                  {view.counts[k.key === "accepted" ? "accepted" : k.key]}
-                </p>
-              </Card>
-            ))}
+                    {count}
+                  </p>
+                </Card>
+              );
+            })}
           </section>
 
-          {/* Próximos 7 dias */}
+          {/* Próximos 7 dias — com legenda + barras legíveis */}
           <Card className="mt-6 p-5">
-            <h2 className="font-display text-lg font-bold text-ink">
-              Próximos 7 dias
-            </h2>
-            <div className="mt-4 flex items-end justify-between gap-2">
-              {view.days.map(({ day, total, byStatus }, i) => (
-                <div key={i} className="flex flex-1 flex-col items-center gap-2">
-                  <span className="font-data text-xs text-muted tabular-nums">
-                    {total || ""}
-                  </span>
-                  <div
-                    className="flex w-full max-w-10 flex-col-reverse overflow-hidden rounded-[var(--radius-xs)]"
-                    style={{ height: 96 }}
-                    title={`${total} plantão(ões)`}
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+              <h2 className="font-display text-lg font-bold text-ink">
+                Próximos 7 dias
+              </h2>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                {view.legend.map((s) => (
+                  <span
+                    key={s}
+                    className="flex items-center gap-1.5 text-xs text-muted"
                   >
-                    {total === 0 ? (
-                      <div className="h-1.5 w-full bg-[var(--color-surface-2)]" />
-                    ) : (
-                      BAR_STATUSES.filter((s) => byStatus[s]).map((s) => (
+                    <span
+                      className="h-2.5 w-2.5 rounded-[3px]"
+                      style={{ background: statusColor(s) }}
+                    />
+                    {statusLabel(s)}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-5 flex items-end gap-2 sm:gap-3">
+              {view.days.map(({ day, total, byStatus }, i) => {
+                const today = i === 0;
+                return (
+                  <div key={i} className="flex flex-1 flex-col items-center gap-1.5">
+                    <span className="font-data h-4 text-xs tabular-nums text-ink-2">
+                      {total || ""}
+                    </span>
+                    <div
+                      className="flex w-full flex-col-reverse overflow-hidden rounded-[var(--radius-xs)] bg-[var(--color-surface-sunk)]"
+                      style={{ height: CHART_H }}
+                      title={`${total} plantão(ões)`}
+                    >
+                      {BAR_STATUSES.filter((s) => byStatus[s]).map((s) => (
                         <div
                           key={s}
                           style={{
-                            height: `${(byStatus[s] / view.maxTotal) * 96}px`,
+                            height: `${Math.max(6, (byStatus[s] / view.maxTotal) * CHART_H)}px`,
                             background: statusColor(s),
                           }}
                           title={`${byStatus[s]} ${statusLabel(s)}`}
                         />
-                      ))
-                    )}
+                      ))}
+                    </div>
+                    <span
+                      className={`text-xs capitalize ${today ? "font-medium text-accent" : "text-faint"}`}
+                    >
+                      {today
+                        ? "hoje"
+                        : day.toLocaleDateString("pt-BR", { weekday: "short" })}
+                    </span>
+                    <span className="font-data -mt-1 text-xs tabular-nums text-faint">
+                      {day.getDate()}
+                    </span>
                   </div>
-                  <span className="text-xs capitalize text-faint">
-                    {day.toLocaleDateString("pt-BR", { weekday: "short" })}
-                  </span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </Card>
 
@@ -212,26 +258,25 @@ export default function DashboardPage() {
                 />
               </div>
             ) : (
-              <ul className="mt-4 divide-y divide-[var(--color-rule)]">
+              <ul className="mt-3 divide-y divide-[var(--color-rule)]">
                 {view.risk.map((s) => (
                   <li key={s.id}>
                     <Link
                       href={`/plantoes/${s.id}`}
-                      className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-[var(--radius-sm)] px-2 py-3 transition-colors hover:bg-[var(--color-surface-2)]"
+                      className="flex items-center justify-between gap-4 rounded-[var(--radius-sm)] px-2 py-3 transition-colors hover:bg-[var(--color-surface-2)]"
                     >
-                      <span className="min-w-0 flex-1 font-medium text-ink">
-                        {specialtyName(s.specialty_id)}
-                      </span>
-                      <span className="font-data text-sm text-muted">
-                        {formatShiftWindow(s.starts_at, s.ends_at)}
-                      </span>
-                      <span
-                        className="font-data text-sm font-medium"
-                        style={{ color: "var(--status-needs-attention)" }}
-                      >
-                        {relStart(s.starts_at)}
-                      </span>
-                      <StatusPill status={s.status} />
+                      <div className="min-w-0">
+                        <p className="truncate font-medium text-ink">
+                          {specialtyName(s.specialty_id)}
+                        </p>
+                        <p className="font-data mt-0.5 text-xs text-muted">
+                          {formatShiftWindow(s.starts_at, s.ends_at)} ·{" "}
+                          <span style={{ color: "var(--status-needs-attention)" }}>
+                            começa {relStart(s.starts_at)}
+                          </span>
+                        </p>
+                      </div>
+                      <StatusPill status={s.status} className="shrink-0" />
                     </Link>
                   </li>
                 ))}
@@ -245,9 +290,7 @@ export default function DashboardPage() {
                 glyph="◧"
                 title="Nenhum plantão ainda"
                 description="Crie o primeiro plantão para o dashboard ganhar vida."
-                action={
-                  <ButtonLink href="/plantoes/novo">Criar plantão</ButtonLink>
-                }
+                action={<ButtonLink href="/plantoes/novo">Criar plantão</ButtonLink>}
               />
             </Card>
           )}

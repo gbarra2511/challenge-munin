@@ -1,7 +1,8 @@
 "use client";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth";
+import { useLogout } from "@/lib/useLogout";
 import { useRequireRole } from "@/lib/useRequireRole";
 
 const TABS = [
@@ -16,8 +17,8 @@ export default function MedicoLayout({
   children: React.ReactNode;
 }) {
   const { ok, ready } = useRequireRole("medico");
-  const { account, logout } = useAuth();
-  const router = useRouter();
+  const { account } = useAuth();
+  const doLogout = useLogout();
   const pathname = usePathname();
 
   if (!ready || !ok) {
@@ -31,18 +32,22 @@ export default function MedicoLayout({
   return (
     <div className="mx-auto flex min-h-dvh max-w-2xl flex-col">
       {/* Top bar fina */}
-      <header className="sticky top-0 z-10 flex items-center justify-between border-b border-rule bg-[var(--color-paper)]/90 px-4 py-3 backdrop-blur">
-        <span className="font-display text-lg font-extrabold tracking-[-0.02em]">
-          Munin
-        </span>
+      <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-rule bg-[var(--color-paper)]/90 px-4 py-3 backdrop-blur">
+        <div className="flex min-w-0 items-baseline gap-2">
+          <span className="font-display text-lg font-extrabold tracking-[-0.02em]">
+            Munin
+          </span>
+          {account?.email && (
+            <span className="hidden truncate text-xs text-muted sm:inline">
+              {account.email}
+            </span>
+          )}
+        </div>
         <button
-          onClick={() => {
-            logout();
-            router.replace("/login");
-          }}
-          className="text-sm text-muted underline-offset-4 hover:text-ink hover:underline"
+          onClick={doLogout}
+          className="h-9 shrink-0 rounded-[var(--radius-sm)] px-2.5 text-sm font-medium text-muted hover:bg-[var(--color-surface-2)] hover:text-ink"
         >
-          {account?.email ? "Sair" : "Sair"}
+          Sair
         </button>
       </header>
 
