@@ -1,15 +1,18 @@
 "use client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { OfferCard } from "@/components/OfferCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorState } from "@/components/ui/ErrorState";
+import { Select } from "@/components/ui/Field";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ApiError, api } from "@/lib/api";
 import type { AcceptResult, Offer } from "@/lib/types";
 
 export default function OfertasPage() {
   const qc = useQueryClient();
+  const [hospitalFilter, setHospitalFilter] = useState("all");
 
   // Lista crítica: refetch a cada 15s (design.md §7 — tempo real sem WebSocket).
   const { data, isLoading, isError, error, refetch } = useQuery({
@@ -22,6 +25,22 @@ export default function OfertasPage() {
     qc.invalidateQueries({ queryKey: ["offers"] });
     qc.invalidateQueries({ queryKey: ["assignments"] });
   };
+
+  const hospitals = useMemo(() => {
+    const set = new Map<string, string>();
+    for (const o of data?.offers ?? []) {
+      if (o.shift.hospital_name) {
+        set.set(o.shift.hospital_id ?? "", o.shift.hospital_name);
+      }
+    }
+    return Array.from(set.entries());
+  }, [data]);
+
+  const filtered = useMemo(() => {
+    const all = data?.offers ?? [];
+    if (hospitalFilter === "all") return all;
+    return all.filter((o) => (o.shift.hospital_id ?? "") === hospitalFilter);
+  }, [data, hospitalFilter]);
 
   const acceptMut = useMutation({
     mutationFn: (offerId: string) =>
@@ -97,29 +116,56 @@ export default function OfertasPage() {
         />
       )}
 
-      {data && data.offers.length === 0 && (
+      {data && filtered.length === 0 && (
         <EmptyState
           glyph="🌙"
-          title="Nenhuma oferta agora"
+          title={
+            hospitalFilter !== "all"
+              ? "Nenhuma oferta nesse hospital"
+              : "Nenhuma oferta agora"
+          }
           description="Quando surgir um plantão para você, aparece aqui — pode fechar o app, a gente avisa na próxima janela."
         />
       )}
 
-      {data && data.offers.length > 0 && (
-        <div className="flex flex-col gap-4">
-          {data.offers.map((offer) => (
-            <OfferCard
-              key={offer.id}
-              offer={offer}
-              accepting={acceptMut.isPending && acceptMut.variables === offer.id}
-              declining={
-                declineMut.isPending && declineMut.variables === offer.id
-              }
-              onAccept={() => acceptMut.mutate(offer.id)}
-              onDecline={() => declineMut.mutate(offer.id)}
-            />
-          ))}
-        </div>
+      {data && filtered.length > 0 && (
+        <>
+          {hospitals.length > 1 && (
+            <div className="mb-4 max-w-[16rem]">
+              <Select
+                label=""
+                aria-label="Filtrar por hospital"
+                value={hospitalFilter}
+                onChange={(e) => setHospitalFilter(e.target.value)}
+                className="h-9 py-0"
+              >
+                <option value="all">Todos os hospitais</option>
+                {hospitals.map(([hid, name]) => (
+                  <option key={hid} value={hid}>
+                    {name}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          )}
+
+          <div className="flex flex-col gap-4">
+            {filtered.map((offer) => (
+              <OfferCard
+                key={offer.id}
+                offer={offer}
+                accepting={
+                  acceptMut.isPending && acceptMut.variables === offer.id
+                }
+                declining={
+                  declineMut.isPending && declineMut.variables === offer.id
+                }
+                onAccept={() => acceptMut.mutate(offer.id)}
+                onDecline={() => declineMut.mutate(offer.id)}
+              />
+            ))}
+          </div>
+        </>
       )}
     </div>
   );

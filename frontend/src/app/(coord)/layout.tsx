@@ -6,9 +6,10 @@ import { useLogout } from "@/lib/useLogout";
 import { useRequireRole } from "@/lib/useRequireRole";
 
 const NAV = [
-  { href: "/dashboard", label: "Dashboard", glyph: "◧" },
-  { href: "/calendario", label: "Calendário", glyph: "▦" },
-  { href: "/plantoes", label: "Plantões", glyph: "≣" },
+  { href: "/dashboard", label: "Dashboard", icon: "◧" },
+  { href: "/calendario", label: "Calendário", icon: "▦" },
+  { href: "/plantoes", label: "Plantões", icon: "≣" },
+  { href: "/medicos", label: "Médicos", icon: "⊕" },
 ];
 
 export default function CoordLayout({
@@ -40,7 +41,7 @@ export default function CoordLayout({
           key={n.href}
           href={n.href}
           aria-current={active ? "page" : undefined}
-          className={`flex items-center gap-2.5 rounded-[var(--radius-sm)] px-3 py-2 text-sm font-medium transition-colors ${
+          className={`flex items-center gap-2.5 rounded-[var(--radius-sm)] px-3 py-2.5 text-sm font-medium transition-colors ${
             orientation === "row" ? "whitespace-nowrap" : ""
           } ${
             active
@@ -49,7 +50,7 @@ export default function CoordLayout({
           }`}
         >
           <span aria-hidden className="text-base leading-none">
-            {n.glyph}
+            {n.icon}
           </span>
           {n.label}
         </Link>
@@ -74,15 +75,25 @@ export default function CoordLayout({
           <span aria-hidden>＋</span> Novo plantão
         </Link>
 
-        <nav className="mt-4 flex flex-col gap-1">{navItems("col")}</nav>
+        <nav className="mt-5 flex flex-col gap-1">{navItems("col")}</nav>
 
-        <div className="mt-auto border-t border-rule px-3 pt-4">
-          <p className="truncate text-xs text-muted" title={account?.email}>
-            {account?.email}
-          </p>
+        {/* Rodapé: usuário + sair */}
+        <div className="mt-auto flex flex-col gap-3 border-t border-rule px-1 pt-4">
+          <div className="flex items-center gap-2.5 px-2">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--color-accent-soft)] text-xs font-bold text-accent">
+              {account?.email?.charAt(0).toUpperCase() ?? "U"}
+            </div>
+            <p
+              className="min-w-0 truncate text-xs text-muted"
+              title={account?.email}
+            >
+              {account?.email}
+            </p>
+          </div>
           <button
+            id="btn-logout"
             onClick={doLogout}
-            className="mt-1 text-sm text-muted underline-offset-4 hover:text-ink hover:underline"
+            className="flex h-9 w-full items-center justify-center gap-2 rounded-[var(--radius-sm)] border border-rule text-sm font-medium text-muted transition-colors hover:bg-[var(--color-surface-2)] hover:text-ink"
           >
             Sair
           </button>
@@ -95,16 +106,11 @@ export default function CoordLayout({
           <span className="font-display text-lg font-extrabold tracking-[-0.02em]">
             Munin
           </span>
-          {account?.email && (
-            <span className="hidden truncate text-xs text-muted sm:inline">
-              {account.email}
-            </span>
-          )}
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
           <button
             onClick={doLogout}
-            className="h-9 rounded-[var(--radius-sm)] px-2.5 text-sm font-medium text-muted hover:bg-[var(--color-surface-2)] hover:text-ink"
+            className="h-9 rounded-[var(--radius-sm)] border border-rule px-3 text-sm font-medium text-muted hover:bg-[var(--color-surface-2)] hover:text-ink"
           >
             Sair
           </button>
@@ -120,7 +126,10 @@ export default function CoordLayout({
         {navItems("row")}
       </nav>
 
-      <main className="mx-auto w-full max-w-[var(--app-maxw)] px-5 py-6 md:px-8 md:py-8">
+      <main
+        id="main-content"
+        className="mx-auto w-full max-w-[var(--app-maxw)] px-5 py-6 md:px-8 md:py-8"
+      >
         {children}
       </main>
     </div>

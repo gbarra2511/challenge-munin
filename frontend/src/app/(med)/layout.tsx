@@ -6,9 +6,10 @@ import { useLogout } from "@/lib/useLogout";
 import { useRequireRole } from "@/lib/useRequireRole";
 
 const TABS = [
-  { href: "/ofertas", label: "Ofertas", glyph: "●" },
-  { href: "/agenda", label: "Agenda", glyph: "▦" },
-  { href: "/historico", label: "Histórico", glyph: "↻" },
+  { href: "/ofertas", label: "Ofertas", icon: "●" },
+  { href: "/agenda", label: "Agenda", icon: "▦" },
+  { href: "/historico", label: "Histórico", icon: "↻" },
+  { href: "/perfil", label: "Perfil", icon: "◎" },
 ];
 
 export default function MedicoLayout({
@@ -31,9 +32,9 @@ export default function MedicoLayout({
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-2xl flex-col">
-      {/* Top bar fina */}
+      {/* Top bar */}
       <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-rule bg-[var(--color-paper)]/90 px-4 py-3 backdrop-blur">
-        <div className="flex min-w-0 items-baseline gap-2">
+        <div className="flex min-w-0 items-center gap-2.5">
           <span className="font-display text-lg font-extrabold tracking-[-0.02em]">
             Munin
           </span>
@@ -44,19 +45,22 @@ export default function MedicoLayout({
           )}
         </div>
         <button
+          id="btn-logout"
           onClick={doLogout}
-          className="h-9 shrink-0 rounded-[var(--radius-sm)] px-2.5 text-sm font-medium text-muted hover:bg-[var(--color-surface-2)] hover:text-ink"
+          className="h-9 shrink-0 rounded-[var(--radius-sm)] border border-rule px-3 text-sm font-medium text-muted transition-colors hover:bg-[var(--color-surface-2)] hover:text-ink"
         >
           Sair
         </button>
       </header>
 
       {/* Conteúdo (padding extra embaixo p/ não cobrir com a tab bar) */}
-      <main className="flex-1 px-4 pb-28 pt-5">{children}</main>
+      <main id="main-content" className="flex-1 px-4 pb-28 pt-5">
+        {children}
+      </main>
 
       {/* Tab bar inferior — alvos ≥44px */}
       <nav className="fixed inset-x-0 bottom-0 z-10 mx-auto max-w-2xl border-t border-rule bg-[var(--color-surface)]">
-        <ul className="grid grid-cols-3">
+        <ul className="grid grid-cols-4">
           {TABS.map((t) => {
             const active = pathname === t.href;
             return (
@@ -68,8 +72,8 @@ export default function MedicoLayout({
                     active ? "text-accent" : "text-muted hover:text-ink"
                   }`}
                 >
-                  <span aria-hidden className="text-base leading-none">
-                    {t.glyph}
+                  <span aria-hidden className="text-lg leading-none">
+                    {t.icon}
                   </span>
                   {t.label}
                 </Link>

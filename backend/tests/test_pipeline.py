@@ -111,17 +111,22 @@ def test_tick_is_idempotent(session, hospital) -> None:
             hospital_ids=[hospital.id],
         )
 
-    first = run_tick(session, now=T0)
-    assert first["opened"] == 1
+    # Agora o tick não auto-oferta OPEN. A coordenadora dispara manualmente.
+    open_offers(session, shift, now=T0)
     count_after_first = session.scalar(
         select(func.count()).select_from(ShiftOffer).where(ShiftOffer.shift_id == shift.id)
     )
+    assert count_after_first == 3  # batch_size=3
+
+    # Tick no mesmo instante: ofertas ainda estão vivas, nada muda.
+    first = run_tick(session, now=T0)
+    assert first["processed"] == 1
+    assert first["advanced"] == 0
 
     # Rodar de novo no mesmo instante não muda nada.
     second = run_tick(session, now=T0)
     count_after_second = session.scalar(
         select(func.count()).select_from(ShiftOffer).where(ShiftOffer.shift_id == shift.id)
     )
-    assert second["opened"] == 0
     assert second["advanced"] == 0
     assert count_after_second == count_after_first

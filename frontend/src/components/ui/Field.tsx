@@ -72,16 +72,24 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
           {label}
         </label>
       )}
-      <select
-        ref={ref}
-        id={selectId}
-        name={name}
-        aria-invalid={!!error}
-        className={`${fieldBase} ${ring(error)} appearance-none ${className}`}
-        {...rest}
-      >
-        {children}
-      </select>
+      <div className="relative">
+        <select
+          ref={ref}
+          id={selectId}
+          name={name}
+          aria-invalid={!!error}
+          className={`${fieldBase} ${ring(error)} w-full appearance-none pr-8 ${className}`}
+          {...rest}
+        >
+          {children}
+        </select>
+        <span
+          aria-hidden
+          className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted"
+        >
+          ▾
+        </span>
+      </div>
       <FieldMsg error={error} hint={hint} />
     </div>
   );

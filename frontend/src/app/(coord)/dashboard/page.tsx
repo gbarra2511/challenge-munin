@@ -23,7 +23,6 @@ import type { Shift } from "@/lib/types";
 
 const HOUR = 3_600_000;
 const RISK_WINDOW_H = 12; // <12h sem aceite = em risco (PLANO §9)
-const CHART_H = 120;
 
 function relStart(iso: string): string {
   const ms = msUntil(iso);
@@ -171,9 +170,9 @@ export default function DashboardPage() {
             })}
           </section>
 
-          {/* Próximos 7 dias — com legenda + barras legíveis */}
-          <Card className="mt-6 p-5">
-            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          {/* Próximos 7 dias — barras horizontais por status */}
+          <Card className="mt-6 overflow-hidden p-0">
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-5 pt-5 pb-4">
               <h2 className="font-display text-lg font-bold text-ink">
                 Próximos 7 dias
               </h2>
@@ -193,39 +192,73 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div className="mt-5 flex items-end gap-2 sm:gap-3">
+            <div className="flex flex-col">
               {view.days.map(({ day, total, byStatus }, i) => {
                 const today = i === 0;
+                const dayLabel = today
+                  ? "Hoje"
+                  : day.toLocaleDateString("pt-BR", { weekday: "short" });
+                const dateNum = day.getDate();
+                const monthShort = day
+                  .toLocaleDateString("pt-BR", { month: "short" })
+                  .replace(".", "");
+
                 return (
-                  <div key={i} className="flex flex-1 flex-col items-center gap-1.5">
-                    <span className="font-data h-4 text-xs tabular-nums text-ink-2">
-                      {total || ""}
-                    </span>
-                    <div
-                      className="flex w-full flex-col-reverse overflow-hidden rounded-[var(--radius-xs)] bg-[var(--color-surface-sunk)]"
-                      style={{ height: CHART_H }}
-                      title={`${total} plantão(ões)`}
-                    >
-                      {BAR_STATUSES.filter((s) => byStatus[s]).map((s) => (
-                        <div
-                          key={s}
-                          style={{
-                            height: `${Math.max(6, (byStatus[s] / view.maxTotal) * CHART_H)}px`,
-                            background: statusColor(s),
-                          }}
-                          title={`${byStatus[s]} ${statusLabel(s)}`}
-                        />
-                      ))}
+                  <div
+                    key={i}
+                    className={`flex items-center gap-4 px-5 py-3 ${
+                      today
+                        ? "border-l-[3px] border-l-[var(--color-accent)] bg-[var(--color-accent-soft)]/25"
+                        : i % 2 === 1
+                          ? "bg-[var(--color-surface-sunk)]/40"
+                          : ""
+                    }`}
+                  >
+                    {/* Dia */}
+                    <div className="flex w-[4.5rem] shrink-0 items-baseline gap-1.5">
+                      <span
+                        className={`text-xs font-semibold capitalize ${
+                          today ? "text-accent" : "text-ink-2"
+                        }`}
+                      >
+                        {dayLabel}
+                      </span>
+                      <span className="font-data text-xs tabular-nums text-faint">
+                        {dateNum}/{monthShort}
+                      </span>
                     </div>
-                    <span
-                      className={`text-xs capitalize ${today ? "font-medium text-accent" : "text-faint"}`}
-                    >
-                      {today
-                        ? "hoje"
-                        : day.toLocaleDateString("pt-BR", { weekday: "short" })}
-                    </span>
-                    <span className="font-data -mt-1 text-xs tabular-nums text-faint">
-                      {day.getDate()}
+
+                    {/* Barras */}
+                    <div className="flex h-7 flex-1 items-center gap-[2px] overflow-hidden rounded-[var(--radius-xs)]">
+                      {total === 0 ? (
+                        <div className="h-full w-full rounded-[var(--radius-xs)] bg-[var(--color-surface-sunk)]" />
+                      ) : (
+                        BAR_STATUSES.filter((s) => byStatus[s]).map((s) => (
+                          <div
+                            key={s}
+                            className="group relative flex h-full items-center justify-center overflow-hidden transition-all"
+                            style={{
+                              flex: byStatus[s],
+                              background: statusColor(s),
+                              minWidth: "28px",
+                              borderRadius: "var(--radius-xs)",
+                            }}
+                          >
+                            <span className="text-[10px] font-bold text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.3)]">
+                              {byStatus[s]}
+                            </span>
+                            {/* Tooltip on hover */}
+                            <span className="pointer-events-none absolute -top-8 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded bg-[var(--color-ink)] px-2 py-1 text-[10px] font-medium text-[var(--color-paper)] opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                              {byStatus[s]} {statusLabel(s)}
+                            </span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    {/* Total */}
+                    <span className="font-data w-6 shrink-0 text-right text-sm font-semibold tabular-nums text-ink-2">
+                      {total || "–"}
                     </span>
                   </div>
                 );

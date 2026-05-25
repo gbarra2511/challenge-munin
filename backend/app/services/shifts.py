@@ -61,11 +61,20 @@ def create_shift(
 
 
 def list_shifts(
-    session: Session, *, hospital_id: UUID, status: str | None = None
+    session: Session,
+    *,
+    hospital_id: UUID,
+    status: str | None = None,
+    from_date: datetime | None = None,
+    to_date: datetime | None = None,
 ) -> list[Shift]:
     stmt = select(Shift).where(Shift.hospital_id == hospital_id)
     if status is not None:
         stmt = stmt.where(Shift.status == status)
+    if from_date is not None:
+        stmt = stmt.where(Shift.starts_at >= from_date)
+    if to_date is not None:
+        stmt = stmt.where(Shift.starts_at <= to_date)
     stmt = stmt.order_by(Shift.starts_at)
     return list(session.scalars(stmt))
 

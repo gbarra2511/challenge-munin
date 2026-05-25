@@ -44,6 +44,11 @@ export function OfferCard({
           <h2 className="font-display text-xl font-bold tracking-[-0.01em] text-ink">
             {specialtyName(offer.shift.specialty_id)}
           </h2>
+          {offer.shift.hospital_name && (
+            <p className="mt-0.5 text-sm text-muted">
+              {offer.shift.hospital_name}
+            </p>
+          )}
           <p className="font-data mt-0.5 text-xs text-faint">
             Plantão #{offer.shift.id.slice(0, 8)} · lote {offer.batch_number}
           </p>
@@ -77,7 +82,7 @@ export function OfferCard({
         <span
           className="font-data ml-auto text-lg font-medium tabular-nums"
           style={{ color: countdownColor }}
-          aria-live="off"
+          aria-live="polite"
         >
           {formatCountdown(ms)}
         </span>

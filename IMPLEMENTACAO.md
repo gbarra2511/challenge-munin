@@ -3,7 +3,7 @@
 > Estado atual da implementação do Mini-WFM e próximos passos.
 > **Atualizar após cada feature grande. Revisar no início de cada sessão.**
 
-Última atualização: 2026-05-24 (Dia 5 fechado — dashboard + calendário + detalhe do plantão com timeline)
+Última atualização: 2026-05-25 (Dia 6 — endpoints faltantes + fixes + features frontend + qualidade de código)
 
 ---
 
@@ -36,17 +36,77 @@ IPv6/`::1` é do AirPlay Receiver. O frontend já aponta pra `127.0.0.1` via `.e
 | Esqueleto do projeto | ✅ feito |
 | Schema do banco + state machines | ✅ feito |
 | Auth + CRUD básicos | ✅ feito |
-| Pipeline de ofertas + tick | ✅ feito |
+| Pipeline de ofertas + tick | ✅ feito (tick corrigido: não auto-oferta OPEN) |
 | Accept atômico (race condition) | ✅ feito |
-| Frontend (Hallmark + telas) | 🔄 em andamento (Dias 4–5 ✅: auth + todas as telas-núcleo) |
+| Endpoints faltantes (cancel, expand, offers) | ✅ feito |
+| Frontend (Hallmark + telas) | ✅ feito (Dias 4–6: auth + todas as telas + ações completas) |
+| Qualidade de código + robustez | ✅ feito (CORS, N+1, error boundary, JSON.parse) |
 | Deploy público + seed | ⏳ pendente |
-| Testes obrigatórios (5) | ✅ feito (5/5 + extras) |
+| Testes obrigatórios (5) | ✅ feito (5/5 + extras — 83/83) |
 | README final | ⏳ pendente |
 | Bônus | ⏳ depois do obrigatório |
 
 ---
 
 ## Feito
+
+### Dia 6 — Endpoints faltantes + fixes + features frontend + qualidade (2026-05-25)
+
+Fechamento das lacunas técnicas: todos os endpoints do PLANO §8 implementados,
+bugs corrigidos, features novas no frontend, hardening de código. **83/83 testes
+passando**, `npm run build` limpo.
+
+**Backend — 3 endpoints novos + 5 fixes:**
+
+- **`POST /shifts/:id/cancel`** (novo): lock pessimista no shift, supersede ofertas
+  pendentes, cancela assignment ativa, transiciona para `cancelled`, grava audit.
+  Adicionada transição `offering → cancelled` na state machine.
+- **`POST /shifts/:id/expand-pool`** (novo): para shifts em `needs_attention` —
+  busca novos médicos elegíveis excluindo já ofertados, envia novo batch,
+  transiciona de volta para `offering`. Retorna `new_offers` no response.
+- **`GET /shifts/:id/offers`** (novo): JOIN único `ShiftOffer + Doctor`,
+  retorna lista agrupável por batch com nome do médico — alimenta a sidebar.
+- **Fix `decline_offer`**: agora carrega o shift para incluir `hospital_id`
+  no audit event (antes ficava `None`).
+- **Fix tick auto-offering**: removido `ShiftStatus.OPEN` do filtro do tick.
+  A coordenadora agora tem controle total sobre quando disparar ofertas
+  (via `POST /shifts/:id/offer`). Teste `test_tick_is_idempotent` atualizado.
+- **Fix N+1 em `GET /doctors`**: nova função `doctors_view_batch` carrega
+  especialidades e afiliações em 2 queries bulk em vez de 2×N.
+- **`hospital_name` em `/me/offers` e `/me/assignments`**: JOIN com `Hospital`
+  para que o médico veja de qual hospital é cada oferta/plantão.
+- **Filtros `from`/`to` em `GET /shifts`**: parâmetros de data opcionais.
+- **CORS melhorado**: `Access-Control-Max-Age: 600` + handler explícito de
+  `OPTIONS` via `before_request` (204 sem body).
+
+Arquivos criados/modificados:
+- `app/services/shift_actions.py` (novo — `cancel_shift`, `expand_pool`, `get_shift_offers`)
+- `app/domain/shift.py` (transição `offering → cancelled`)
+- `app/services/offers.py` (fix decline audit + tick não auto-oferta OPEN)
+- `app/services/shifts.py` (filtros `from_date`/`to_date`)
+- `app/services/doctors.py` (`doctors_view_batch`)
+- `app/api/shifts.py` (3 endpoints novos + filtros de data)
+- `app/api/me.py` (JOIN Hospital, `hospital_name`)
+- `app/__init__.py` (CORS preflight + Max-Age)
+- `tests/test_pipeline.py` (fix `test_tick_is_idempotent`)
+
+**Frontend — 4 features + 5 melhorias:**
+
+- **`ConfirmDialog.tsx`** (novo): modal reutilizável com overlay+blur, foco
+  automático, Escape para fechar, variante `danger` para ações destrutivas.
+- **Detalhe do plantão reescrito** (`plantoes/[id]/page.tsx`): layout 2 colunas
+  (`md:grid-cols-[1fr_320px]`), sidebar de ofertas agrupadas por batch com
+  dot colorido + nome do médico, botão "Cancelar plantão" (com ConfirmDialog
+  danger), botão "Ampliar pool de médicos" para `needs_attention`.
+- **Histórico do médico implementado** (`historico/page.tsx`): tabela no desktop,
+  cards no mobile, filtro por status, mostra hospital_name.
+- **`ErrorBoundary.tsx`** (novo): error boundary global com tela de reload.
+- **`OfferCard.tsx`**: mostra `hospital_name`, `aria-live="polite"` no countdown.
+- **`Field.tsx`**: chevron visual (▾) no Select (antes `appearance-none` sem indicador).
+- **`layout.tsx`**: ErrorBoundary global + skip-to-content link (a11y).
+- **`api.ts`**: `JSON.parse` em try/catch — resposta malformada gera `ApiError`.
+- **`types.ts`**: `hospital_name` em `EmbeddedShift`, novos tipos `ShiftOfferDetail`
+  e `ShiftOfferDoctor`.
 
 ### Frontend Dia 5 — dashboard + calendário + detalhe com timeline (2026-05-24)
 
@@ -284,21 +344,50 @@ Pronta pra ser usada pelos endpoints `/auth/login` e
 - [x] Empty/loading/error states + toasts (base do design.md §7) ✅
 - [x] **Dia 5** — coord: dashboard (KPIs + tabela de risco), calendário semanal,
       detalhe `/plantoes/:id` com timeline do audit log ✅ 2026-05-24
-- [ ] **Backend p/ ações do detalhe** (PLANO §8): `POST /shifts/:id/cancel`,
-      `/expand-pool`, marcar preenchido manualmente (precisam de service + teste)
-- [ ] **Polish** — médico: histórico paginado; agenda como calendário pessoal;
-      sidebar→drawer real <768px (hoje colapsa pra top-bar + nav horizontal)
+- [x] **Backend p/ ações do detalhe** (PLANO §8): `POST /shifts/:id/cancel`,
+      `/expand-pool`, `GET /shifts/:id/offers` ✅ 2026-05-25
+- [x] **Histórico do médico**: tabela/cards com filtro de status ✅ 2026-05-25
+- [x] **Error boundary + skip-to-content + CORS + N+1 fix** ✅ 2026-05-25
+### 5. WFM Completo — Ranking + Gestão de Médicos + UX Médico (aprovado 2026-05-25)
 
-### 5. Deploy (Dia 6)
+> Plano detalhado em `implementation_plan.md` (Antigravity). Resumo e checklist:
+
+#### Fase 1 — Ranking inteligente (Backend, Bônus Tier 1)
+- [x] `ranking.py`: `ranked_doctors()` com score 0–100 (4 fatores: aceite 40%, recência 25%, carga 20%, resposta 15%)
+- [x] 2 queries bulk para stats (sem N+1)
+- [x] Breakdown por médico (explicabilidade)
+- [x] `offers.py`: `open_offers` usa `ranked_doctors` em vez de `eligible_doctors`
+- [x] Médico sem histórico = score neutro (50)
+
+#### Fase 2 — Backend gestão de médicos
+- [x] `PATCH /doctors/:id` — editar nome, phone, specialties
+- [x] `POST /doctors/:id/deactivate` e `/activate` — soft-delete via affiliation
+- [x] `GET /doctors/:id/stats` — métricas (aceite %, carga, score)
+- [x] `GET/POST/DELETE /doctors/:id/unavailabilities` — CRUD indisponibilidades (coord)
+- [x] `GET /me/profile` e `PATCH /me/profile` — médico edita seu perfil
+- [x] `GET/POST/DELETE /me/unavailabilities` — médico gerencia suas indisponibilidades
+
+#### Fase 3 — Frontend coord: tela de médicos
+- [x] `/medicos` — lista com tabela (nome, specialties, aceite %, plantões, status)
+- [x] `/medicos/[id]` — perfil: dados editáveis, métricas, indisponibilidades, histórico
+- [x] `/medicos/novo` — formulário de cadastro
+- [x] Nav sidebar: adicionar link "Médicos" com ícone ⊕
+
+#### Fase 4 — Frontend médico: multi-hospital + perfil
+- [x] `/ofertas` — filtro por hospital (dropdown, client-side)
+- [x] `/agenda` — rewrite: agrupada por dia (igual plantões da coord), filtro hospital
+- [x] `/historico` — adicionar filtro por hospital
+- [x] `/perfil` — nova tab: nome, phone, hospitais, specialties, indisponibilidades
+- [x] Tab bar inferior: adicionar aba "Perfil" com ícone ◎
+
+### 6. Deploy
 - [ ] Backend → Fly.io (Dockerfile + `fly launch`)
 - [ ] Frontend → Vercel
 - [ ] DB → Supabase
 - [ ] Configurar secrets `API_URL` e `TICK_SECRET` no GitHub
-- [ ] **Reativar cron do `tick.yml`** (descomentar bloco `schedule:`) —
-  está desativado desde 2026-05-22 porque estava falhando sem backend
-  e sem secrets, gerando emails de "tick failed" a cada 5 min
+- [ ] **Reativar cron do `tick.yml`** (descomentar bloco `schedule:`)
 
-### 6. Seed + README (Dia 6-7)
+### 7. Seed + README
 - [x] `POST /admin/seed` (guard `ADMIN_SECRET`) ✅ 2026-05-24 — idempotente
   (TRUNCATE + recria; preserva specialties). 2 hospitais, coordenadora +
   30 médicos (1–2 specialties, afiliações variadas A/B), 10 plantões em
@@ -307,10 +396,9 @@ Pronta pra ser usada pelos endpoints `/auth/login` e
   Credenciais: `coordenadora@hospital.com` / `medico@hospital.com` (`123456`).
 - [ ] README com link, credenciais, diagramas, decisões, prints/GIF
 
-### 7. Bônus (Dia 7, se houver tempo)
-- [ ] Ranking de médicos com explicabilidade
-- [ ] Timeline rica no detalhe do plantão (a partir do audit log)
+### 8. Bônus extra (se houver tempo)
 - [ ] Mini-Luis: chat LLM com tool calling (`claude-haiku-4-5-20251001`)
+- [ ] Copiloto da coordenadora (SQL read-only via tool calling)
 
 ---
 
@@ -329,6 +417,26 @@ Pronta pra ser usada pelos endpoints `/auth/login` e
 - **Fly.io** pro backend (locks + transações longas funcionam melhor que serverless).
 - **Tick lazy no dashboard** como rede de segurança caso o GitHub Actions cron atrase.
 - **Frontend scaffold só no Dia 4**: evita configurar coisa que vai ser reescrita.
+- **Tick não auto-oferta OPEN** (2026-05-25): tick agora só processa shifts em
+  `OFFERING`. A coordenadora dispara explicitamente via `POST /shifts/:id/offer`.
+  Motivo: o auto-offering tirava controle da coordenadora — um plantão criado
+  pro dia seguinte seria ofertado imediatamente pelo tick, sem que ela pudesse
+  revisar. O tick continua avançando batches e escalando normalmente.
+- **N+1 resolvido com batch view** (2026-05-25): `doctors_view_batch` faz 2
+  queries (specialties + affiliations) pra N médicos, em vez de 2×N. O endpoint
+  `/doctors` que serve o dropdown da coord escalava mal.
+- **Ranking inteligente com 4 fatores** (planejado 2026-05-25): aceite rate
+  (40%) + recência (25%) + carga semanal (20%) + tempo de resposta (15%).
+  Score 0–100 com breakdown explicável por médico. Médico sem histórico
+  recebe 50 (neutro). 2 queries bulk para stats.
+- **Soft-delete de médicos** (planejado 2026-05-25): desativar = mudar
+  `doctor_hospital_affiliations.status` para `inactive`, não deletar do
+  banco. Preserva auditoria e permite reativação.
+- **Médico edita nome/phone, não specialties** (planejado 2026-05-25):
+  especialidade é credencial — só coordenadora altera via PATCH /doctors/:id.
+- **Filtro hospital no frontend = client-side** (planejado 2026-05-25):
+  dados de `/me/offers` e `/me/assignments` já vêm com `hospital_name`.
+  Filtro é só `.filter()` no array — zero queries extras.
 - **Colima como runtime Docker local** (2026-05-23): mesmo
   `docker-compose.yml` que o avaliador vai usar, sem peso do Docker
   Desktop. `docker compose up -d` sobe Postgres 15 healthy.
@@ -340,6 +448,14 @@ Pronta pra ser usada pelos endpoints `/auth/login` e
   - Especialidade "usada" no aceite é **inferida** via shift, não
     armazenada (Opção A).
   - `doctor_unavailabilities` em tabela própria, filtrada pelo tick.
+- **Repetição de indisponibilidades** (2026-05-25): para simplificar o
+  schema do banco (evitando queries GIST/OVERLAPS lentas para RRULEs), a
+  repetição semanal (ex. por 4 semanas) no frontend gera instâncias reais no
+  banco via loop no `create_unavailability`, facilitando a verificação no `ranking.py`.
+- **Formatação amigável de datas no perfil** (2026-05-25): uso nativo de
+  `toLocaleDateString` e `toLocaleTimeString` no frontend para exibição clara
+  do formato (ex: `25 Mai, 14:00 até 25 Mai, 18:00`), focando em melhor UX
+  tanto para o médico quanto para a coordenação.
   - `audit_events.hospital_id` opcional (custo zero, filtros futuros).
 
 ---

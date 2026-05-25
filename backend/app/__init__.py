@@ -72,6 +72,21 @@ def _register_blueprints(app: Flask) -> None:
 def _register_cors(app: Flask, origins_csv: str) -> None:
     allowed = {o.strip() for o in origins_csv.split(",") if o.strip()}
 
+    @app.before_request
+    def _handle_preflight():  # type: ignore[no-untyped-def]
+        if request.method == "OPTIONS":
+            origin = request.headers.get("Origin")
+            if origin and origin in allowed:
+                resp = app.make_default_options_response()
+                resp.headers["Access-Control-Allow-Origin"] = origin
+                resp.headers["Vary"] = "Origin"
+                resp.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type"
+                resp.headers["Access-Control-Allow-Methods"] = (
+                    "GET, POST, PATCH, DELETE, OPTIONS"
+                )
+                resp.headers["Access-Control-Max-Age"] = "600"
+                return resp
+
     @app.after_request
     def _add_cors_headers(resp):  # type: ignore[no-untyped-def]
         origin = request.headers.get("Origin")
@@ -82,4 +97,6 @@ def _register_cors(app: Flask, origins_csv: str) -> None:
             resp.headers["Access-Control-Allow-Methods"] = (
                 "GET, POST, PATCH, DELETE, OPTIONS"
             )
+            resp.headers["Access-Control-Max-Age"] = "600"
         return resp
+

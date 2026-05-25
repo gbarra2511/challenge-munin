@@ -25,7 +25,7 @@ from app.domain import shift as shift_sm
 from app.domain.shift import ShiftStatus
 from app.models import Doctor, Shift, ShiftAssignment, ShiftOffer
 from app.services.audit import record_event
-from app.services.ranking import eligible_doctors
+from app.services.ranking import eligible_doctors, ranked_doctors
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -106,7 +106,8 @@ def open_offers(
                 "unknown doctor_ids", details={"missing": [str(m) for m in missing]}
             )
     else:
-        doctors = eligible_doctors(session, shift)[: shift.batch_size]
+        ranked = ranked_doctors(session, shift)
+        doctors = [r.doctor for r in ranked[: shift.batch_size]]
 
     if not doctors:
         raise UnprocessableEntity("no eligible doctors for this shift")
@@ -184,7 +185,8 @@ def _tick_offering(session: Session, shift: Shift, now: datetime, stats: dict[st
 
     # 2. batch esgotou sem aceite → tenta próximo batch
     already = _offered_doctor_ids(session, shift.id)
-    nxt = eligible_doctors(session, shift, exclude_doctor_ids=already)[: shift.batch_size]
+    ranked = ranked_doctors(session, shift, exclude_doctor_ids=already)
+    nxt = [r.doctor for r in ranked[: shift.batch_size]]
     if nxt:
         _send_batch(session, shift, nxt, batch_number=shift.current_batch + 1, now=now)
         shift.current_batch += 1
@@ -204,27 +206,25 @@ def _tick_offering(session: Session, shift: Shift, now: datetime, stats: dict[st
 
 
 def run_tick(session: Session, *, now: datetime | None = None) -> dict[str, int]:
-    """Avança o pipeline de todos os plantões ativos. Idempotente."""
+    """Avança o pipeline de todos os plantões em OFFERING. Idempotente.
+
+    Nota: shifts OPEN não são processados pelo tick. A coordenadora deve
+    disparar explicitamente via POST /shifts/:id/offer. Isso evita que
+    plantões sejam ofertados antes do momento desejado."""
     now = _now(now)
-    stats = {"processed": 0, "opened": 0, "advanced": 0, "escalated": 0, "expired_offers": 0}
+    stats = {"processed": 0, "advanced": 0, "escalated": 0, "expired_offers": 0}
 
     shifts = list(
         session.scalars(
             select(Shift)
-            .where(Shift.status.in_([ShiftStatus.OPEN, ShiftStatus.OFFERING]))
+            .where(Shift.status == ShiftStatus.OFFERING)
             .with_for_update()
         )
     )
 
     for shift in shifts:
         stats["processed"] += 1
-        if shift.status == ShiftStatus.OPEN:
-            doctors = eligible_doctors(session, shift)[: shift.batch_size]
-            if doctors:
-                _begin_offering(session, shift, doctors, now=now)
-                stats["opened"] += 1
-        elif shift.status == ShiftStatus.OFFERING:
-            _tick_offering(session, shift, now, stats)
+        _tick_offering(session, shift, now, stats)
 
     session.commit()
     return stats
@@ -328,12 +328,16 @@ def decline_offer(
     if offer.status != "pending":
         raise Conflict("offer no longer pending", code="offer_no_longer_pending")
 
+    # Carrega o shift para obter hospital_id (fix: antes estava faltando)
+    shift = session.get(Shift, offer.shift_id)
+
     offer.status = "declined"
     offer.responded_at = now
     record_event(
         session,
         event_type="offer.declined",
         shift_id=offer.shift_id,
+        hospital_id=shift.hospital_id if shift else None,
         actor_type="doctor",
         actor_id=doctor_id,
         payload={"offer_id": str(offer.id)},

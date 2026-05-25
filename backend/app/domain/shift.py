@@ -31,6 +31,7 @@ _VALID_TRANSITIONS: frozenset[tuple[ShiftStatus, ShiftStatus]] = frozenset(
         (ShiftStatus.OFFERING, ShiftStatus.OFFERING),  # tick avança batch
         (ShiftStatus.OFFERING, ShiftStatus.ACCEPTED),
         (ShiftStatus.OFFERING, ShiftStatus.NEEDS_ATTENTION),
+        (ShiftStatus.OFFERING, ShiftStatus.CANCELLED),
         (ShiftStatus.NEEDS_ATTENTION, ShiftStatus.OFFERING),
         (ShiftStatus.NEEDS_ATTENTION, ShiftStatus.CANCELLED),
         (ShiftStatus.ACCEPTED, ShiftStatus.CONFIRMED),

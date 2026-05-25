@@ -65,10 +65,18 @@ export async function api<T>(path: string, opts: ApiOptions = {}): Promise<T> {
   if (res.status === 204) return undefined as T;
 
   const text = await res.text();
-  const data = text ? JSON.parse(text) : null;
+  let data: unknown = null;
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      if (!res.ok) throw new ApiError(res.status, "parse_error", "Resposta inválida do servidor.");
+    }
+  }
 
   if (!res.ok) {
-    const err = (data && data.error) || {};
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const err = (data as any)?.error ?? {};
     throw new ApiError(
       res.status,
       err.code ?? "error",

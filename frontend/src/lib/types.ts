@@ -34,6 +34,7 @@ export interface LoginResponse {
 export interface EmbeddedShift {
   id: string;
   hospital_id?: string;
+  hospital_name?: string;
   specialty_id: number;
   starts_at: string; // ISO 8601 com offset
   ends_at: string;
@@ -79,3 +80,66 @@ export interface AcceptResult {
   offer_id: string;
   status: "accepted";
 }
+
+// Oferta detalhada (GET /shifts/:id/offers) — visão da coordenadora
+export interface ShiftOfferDoctor {
+  id: string;
+  name: string;
+}
+
+export interface ShiftOfferDetail {
+  id: string;
+  status: OfferStatus;
+  batch_number: number;
+  sent_at: string;
+  expires_at: string;
+  responded_at: string | null;
+  doctor: ShiftOfferDoctor;
+}
+
+// Médico na listagem (GET /doctors)
+export interface DoctorListItem {
+  id: string;
+  name: string;
+  phone: string | null;
+  account_id: string | null;
+  specialty_ids: number[];
+  hospital_ids: string[];
+}
+
+// Métricas do médico (GET /doctors/:id/stats)
+export interface DoctorStats {
+  total_offers: number;
+  accepted: number;
+  declined: number;
+  expired: number;
+  acceptance_rate: number | null;
+  avg_response_min: number | null;
+  total_assignments: number;
+}
+
+// Indisponibilidade
+export interface Unavailability {
+  id: string;
+  starts_at: string;
+  ends_at: string;
+  reason: string | null;
+}
+
+// Perfil completo do médico (GET /me/profile)
+export interface HospitalAffiliation {
+  id: string;
+  name: string;
+  status: "active" | "inactive";
+}
+
+export interface DoctorProfile {
+  id: string;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  specialty_ids: number[];
+  specialties: { id: number; name: string }[];
+  hospitals: HospitalAffiliation[];
+}
+
