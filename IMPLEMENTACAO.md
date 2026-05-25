@@ -88,7 +88,7 @@ Tier 1 de verdade (PLANO §13 — mostrar o *motivo* do ranking).
 - **Backend** `GET /shifts/:id/ranking` (coord, escopado ao hospital):
   `shift_actions.get_shift_ranking` serializa os médicos elegíveis ordenados
   por score, com breakdown (aceite/recência/carga/resposta) e flag
-  `already_offered`. +1 teste (111 total) cobrindo ordem, flag e serialização.
+  `already_offered`. +1 teste (110 total) cobrindo ordem, flag e serialização.
 - **Frontend** `components/RankingCard.tsx` + card na tela de detalhe do
   plantão: posição, score (barra), nome, badge "já ofertado" e motivos em
   pt-BR ("aceita 80% das ofertas · 6d sem plantão · responde em ~4min").
