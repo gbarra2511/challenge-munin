@@ -68,20 +68,22 @@ export default function PlantoesPage() {
       {data && data.shifts.length > 0 && (
         <ul className="divide-y divide-[var(--color-rule)] overflow-hidden rounded-[var(--radius-md)] border border-rule bg-[var(--color-surface)]">
           {data.shifts.map((s) => (
-            <li
-              key={s.id}
-              className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3"
-            >
-              <span className="min-w-0 flex-1 font-medium text-ink">
-                {specialtyName(s.specialty_id)}
-              </span>
-              <span className="font-data text-sm text-muted">
-                {formatShiftWindow(s.starts_at, s.ends_at)}
-              </span>
-              <span className="font-data text-sm font-medium text-ink">
-                {formatBRL(s.rate_cents)}
-              </span>
-              <StatusPill status={s.status} />
+            <li key={s.id}>
+              <Link
+                href={`/plantoes/${s.id}`}
+                className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 transition-colors hover:bg-[var(--color-surface-2)]"
+              >
+                <span className="min-w-0 flex-1 font-medium text-ink">
+                  {specialtyName(s.specialty_id)}
+                </span>
+                <span className="font-data text-sm text-muted">
+                  {formatShiftWindow(s.starts_at, s.ends_at)}
+                </span>
+                <span className="font-data text-sm font-medium text-ink">
+                  {formatBRL(s.rate_cents)}
+                </span>
+                <StatusPill status={s.status} />
+              </Link>
             </li>
           ))}
         </ul>
