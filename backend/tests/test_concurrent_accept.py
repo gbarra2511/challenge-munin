@@ -9,6 +9,7 @@ Garantias verificadas:
 - exatamente 1 linha ativa em shift_assignments;
 - shift termina em 'accepted'.
 """
+
 from __future__ import annotations
 
 import threading
@@ -68,9 +69,7 @@ def _seed(session) -> tuple:
         session.flush()
         session.add(DoctorSpecialty(doctor_id=doctor.id, specialty_id=1))
         session.add(
-            DoctorHospitalAffiliation(
-                doctor_id=doctor.id, hospital_id=hospital.id, status="active"
-            )
+            DoctorHospitalAffiliation(doctor_id=doctor.id, hospital_id=hospital.id, status="active")
         )
         offer = ShiftOffer(
             shift_id=shift.id,

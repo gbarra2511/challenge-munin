@@ -1,4 +1,5 @@
 """Blueprint de médicos (CRUD + gestão — coordenador)."""
+
 from __future__ import annotations
 
 from flask import Blueprint, jsonify, request
@@ -134,17 +135,19 @@ def unavailabilities_list(doctor_id):  # type: ignore[no-untyped-def]
     if doctor is None:
         raise NotFound("doctor not found")
     items = list_unavailabilities(session, doctor.id)
-    return jsonify({
-        "unavailabilities": [
-            {
-                "id": str(u.id),
-                "starts_at": u.starts_at.isoformat(),
-                "ends_at": u.ends_at.isoformat(),
-                "reason": u.reason,
-            }
-            for u in items
-        ]
-    })
+    return jsonify(
+        {
+            "unavailabilities": [
+                {
+                    "id": str(u.id),
+                    "starts_at": u.starts_at.isoformat(),
+                    "ends_at": u.ends_at.isoformat(),
+                    "reason": u.reason,
+                }
+                for u in items
+            ]
+        }
+    )
 
 
 @bp.post("/<uuid:doctor_id>/unavailabilities")
@@ -165,19 +168,26 @@ def unavailabilities_create(doctor_id):  # type: ignore[no-untyped-def]
         raise UnprocessableEntity("starts_at and ends_at are required (ISO format)") from exc
 
     u_list = create_unavailability(
-        session, doctor.id, starts_at=starts_at, ends_at=ends_at, reason=body.get("reason"), repeat_weeks=body.get("repeat_weeks", 0)
+        session,
+        doctor.id,
+        starts_at=starts_at,
+        ends_at=ends_at,
+        reason=body.get("reason"),
+        repeat_weeks=body.get("repeat_weeks", 0),
     )
-    return jsonify({
-        "unavailabilities": [
-            {
-                "id": str(u.id),
-                "starts_at": u.starts_at.isoformat(),
-                "ends_at": u.ends_at.isoformat(),
-                "reason": u.reason,
-            }
-            for u in u_list
-        ]
-    }), 201
+    return jsonify(
+        {
+            "unavailabilities": [
+                {
+                    "id": str(u.id),
+                    "starts_at": u.starts_at.isoformat(),
+                    "ends_at": u.ends_at.isoformat(),
+                    "reason": u.reason,
+                }
+                for u in u_list
+            ]
+        }
+    ), 201
 
 
 @bp.delete("/<uuid:doctor_id>/unavailabilities/<uuid:unavail_id>")

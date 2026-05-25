@@ -1,4 +1,5 @@
 """Testes de /health, /auth/login e /auth/me + guards de papel."""
+
 from __future__ import annotations
 
 from tests.conftest import auth_header, login
@@ -22,18 +23,14 @@ def test_login_success_returns_token_and_account(client, coordinator) -> None:
 
 
 def test_login_wrong_password_is_401(client, coordinator) -> None:
-    resp = client.post(
-        "/auth/login", json={"email": "coord@central.test", "password": "errada"}
-    )
+    resp = client.post("/auth/login", json={"email": "coord@central.test", "password": "errada"})
     assert resp.status_code == 401
     assert resp.get_json()["error"]["code"] == "unauthorized"
 
 
 def test_login_unknown_email_is_401(client, coordinator) -> None:
     # Mesma resposta que senha errada → não vaza existência da conta.
-    resp = client.post(
-        "/auth/login", json={"email": "ninguem@x.test", "password": "qualquer"}
-    )
+    resp = client.post("/auth/login", json={"email": "ninguem@x.test", "password": "qualquer"})
     assert resp.status_code == 401
 
 

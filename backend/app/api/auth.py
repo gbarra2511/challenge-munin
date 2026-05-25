@@ -1,4 +1,5 @@
 """Blueprint de autenticação: login e perfil do ator autenticado."""
+
 from __future__ import annotations
 
 from flask import Blueprint, current_app, jsonify, request
@@ -41,9 +42,7 @@ def login():  # type: ignore[no-untyped-def]
 @require_role()
 def me():  # type: ignore[no-untyped-def]
     session = get_session()
-    account = session.scalar(
-        select(Account).where(Account.id == current_account_id())
-    )
+    account = session.scalar(select(Account).where(Account.id == current_account_id()))
     if account is None:
         raise NotFound("account no longer exists")
     return jsonify({"account": _account_view(account)})

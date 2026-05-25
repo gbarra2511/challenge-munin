@@ -2,6 +2,7 @@
 
 Sem banco, sem clock — só lógica de transição. Espelha PLANO §5.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -30,27 +31,23 @@ VALID = [
 # Casos representativos do que NÃO pode acontecer (não cobre todos os 36 pares
 # inválidos — pra isso ver test_terminals_have_no_outgoing).
 INVALID = [
-    (ShiftStatus.OPEN, ShiftStatus.ACCEPTED),         # pula offering
-    (ShiftStatus.OPEN, ShiftStatus.CANCELLED),        # §5 não permite
-    (ShiftStatus.OFFERING, ShiftStatus.OPEN),         # não volta
-    (ShiftStatus.OFFERING, ShiftStatus.CONFIRMED),    # confirmed só vem de accepted
+    (ShiftStatus.OPEN, ShiftStatus.ACCEPTED),  # pula offering
+    (ShiftStatus.OPEN, ShiftStatus.CANCELLED),  # §5 não permite
+    (ShiftStatus.OFFERING, ShiftStatus.OPEN),  # não volta
+    (ShiftStatus.OFFERING, ShiftStatus.CONFIRMED),  # confirmed só vem de accepted
     (ShiftStatus.NEEDS_ATTENTION, ShiftStatus.ACCEPTED),  # §5 não permite
-    (ShiftStatus.ACCEPTED, ShiftStatus.OFFERING),     # não volta
+    (ShiftStatus.ACCEPTED, ShiftStatus.OFFERING),  # não volta
 ]
 
 
 class TestShiftStateMachine:
     @pytest.mark.parametrize("current,target", VALID)
-    def test_valid_transitions_pass(
-        self, current: ShiftStatus, target: ShiftStatus
-    ) -> None:
+    def test_valid_transitions_pass(self, current: ShiftStatus, target: ShiftStatus) -> None:
         assert can_transition(current, target)
         assert_transition(current, target)  # não levanta
 
     @pytest.mark.parametrize("current,target", INVALID)
-    def test_invalid_transitions_blocked(
-        self, current: ShiftStatus, target: ShiftStatus
-    ) -> None:
+    def test_invalid_transitions_blocked(self, current: ShiftStatus, target: ShiftStatus) -> None:
         assert not can_transition(current, target)
         with pytest.raises(InvalidShiftTransition) as exc_info:
             assert_transition(current, target)

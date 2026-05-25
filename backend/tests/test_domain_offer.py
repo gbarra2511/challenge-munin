@@ -2,6 +2,7 @@
 
 Sem banco, sem clock — só lógica de transição. Espelha PLANO §5.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -24,26 +25,22 @@ VALID = [
 
 
 INVALID = [
-    (OfferStatus.ACCEPTED, OfferStatus.DECLINED),    # terminal
-    (OfferStatus.DECLINED, OfferStatus.PENDING),     # não volta
-    (OfferStatus.EXPIRED, OfferStatus.ACCEPTED),     # terminal
-    (OfferStatus.SUPERSEDED, OfferStatus.PENDING),   # terminal
-    (OfferStatus.PENDING, OfferStatus.PENDING),      # sem self-loop
+    (OfferStatus.ACCEPTED, OfferStatus.DECLINED),  # terminal
+    (OfferStatus.DECLINED, OfferStatus.PENDING),  # não volta
+    (OfferStatus.EXPIRED, OfferStatus.ACCEPTED),  # terminal
+    (OfferStatus.SUPERSEDED, OfferStatus.PENDING),  # terminal
+    (OfferStatus.PENDING, OfferStatus.PENDING),  # sem self-loop
 ]
 
 
 class TestOfferStateMachine:
     @pytest.mark.parametrize("current,target", VALID)
-    def test_valid_transitions_pass(
-        self, current: OfferStatus, target: OfferStatus
-    ) -> None:
+    def test_valid_transitions_pass(self, current: OfferStatus, target: OfferStatus) -> None:
         assert can_transition(current, target)
         assert_transition(current, target)  # não levanta
 
     @pytest.mark.parametrize("current,target", INVALID)
-    def test_invalid_transitions_blocked(
-        self, current: OfferStatus, target: OfferStatus
-    ) -> None:
+    def test_invalid_transitions_blocked(self, current: OfferStatus, target: OfferStatus) -> None:
         assert not can_transition(current, target)
         with pytest.raises(InvalidOfferTransition) as exc_info:
             assert_transition(current, target)
@@ -73,7 +70,5 @@ class TestOfferStateMachine:
     def test_only_pending_has_outgoing(self) -> None:
         # Toda transição válida parte de PENDING — não há grafo cíclico.
         for status in OfferStatus:
-            has_outgoing = any(
-                can_transition(status, t) for t in OfferStatus
-            )
+            has_outgoing = any(can_transition(status, t) for t in OfferStatus)
             assert has_outgoing == (status is OfferStatus.PENDING)

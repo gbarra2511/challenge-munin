@@ -3,6 +3,7 @@
 Não usamos EmailStr (exigiria a dep email-validator) — e-mail é só `str`
 com checagem mínima; a unicidade real é garantida pelo CITEXT UNIQUE no banco.
 """
+
 from __future__ import annotations
 
 from datetime import datetime

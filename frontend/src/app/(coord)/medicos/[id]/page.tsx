@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
 import { toast } from "sonner";
@@ -76,12 +77,12 @@ export default function MedicoDetailPage() {
     <div>
       <header className="mb-6">
         <div className="flex items-center gap-3">
-          <a
+          <Link
             href="/medicos"
             className="text-sm text-muted hover:text-ink transition-colors"
           >
             ← Médicos
-          </a>
+          </Link>
         </div>
         {isLoading && <Skeleton className="mt-3 h-8 w-48" />}
         {doctor && (

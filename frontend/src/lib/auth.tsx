@@ -25,6 +25,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Ao montar: se há token guardado, valida contra /auth/me.
   useEffect(() => {
     if (!getToken()) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setReady(true);
       return;
     }

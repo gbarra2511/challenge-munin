@@ -1,5 +1,5 @@
 "use client";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
@@ -11,8 +11,6 @@ import { ApiError, api } from "@/lib/api";
 import type { DoctorProfile, Unavailability } from "@/lib/types";
 
 export default function PerfilPage() {
-  const qc = useQueryClient();
-
   const {
     data: profileData,
     isLoading,

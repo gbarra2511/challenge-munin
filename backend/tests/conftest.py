@@ -9,6 +9,7 @@ Banco rápido, isolado, sem recriar schema por teste.
 Pré-requisito: `munin_test` migrado (ver README/Makefile). URL sobrescrita
 por TEST_DATABASE_URL.
 """
+
 from __future__ import annotations
 
 import os
@@ -159,9 +160,7 @@ def seed_doctor(
         session.add(DoctorSpecialty(doctor_id=doctor.id, specialty_id=sid))
     for hid in hospital_ids:
         session.add(
-            DoctorHospitalAffiliation(
-                doctor_id=doctor.id, hospital_id=hid, status="active"
-            )
+            DoctorHospitalAffiliation(doctor_id=doctor.id, hospital_id=hid, status="active")
         )
     session.commit()
     return doctor

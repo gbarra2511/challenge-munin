@@ -1,4 +1,5 @@
 """Endpoints administrativos: seed de demo. Protegido por ADMIN_SECRET."""
+
 from __future__ import annotations
 
 from flask import Blueprint, current_app, jsonify

@@ -1,4 +1,5 @@
 """Testes do bcrypt wrapper. rounds=4 pra rodar rápido (não usar em prod)."""
+
 from __future__ import annotations
 
 from app.infra.hashing import hash_password, verify_password

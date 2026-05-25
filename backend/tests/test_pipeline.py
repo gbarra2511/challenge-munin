@@ -1,6 +1,7 @@
 """Testes do pipeline de ofertas (tick): avanço de batch, escalação,
 idempotência. Rodam direto nos serviços com `now` congelado — sem clock real.
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
@@ -28,9 +29,7 @@ def _offers(session, shift_id, batch):
 
 
 def test_pipeline_advances_to_next_batch_after_window(session, hospital) -> None:
-    shift = seed_shift(
-        session, hospital_id=hospital.id, starts_at=FAR_START, ends_at=FAR_END
-    )
+    shift = seed_shift(session, hospital_id=hospital.id, starts_at=FAR_START, ends_at=FAR_END)
     for i in range(6):
         seed_doctor(
             session,
@@ -99,9 +98,7 @@ def test_escalation_to_needs_attention(session, hospital) -> None:
 
 
 def test_tick_is_idempotent(session, hospital) -> None:
-    shift = seed_shift(
-        session, hospital_id=hospital.id, starts_at=FAR_START, ends_at=FAR_END
-    )
+    shift = seed_shift(session, hospital_id=hospital.id, starts_at=FAR_START, ends_at=FAR_END)
     for i in range(3):
         seed_doctor(
             session,

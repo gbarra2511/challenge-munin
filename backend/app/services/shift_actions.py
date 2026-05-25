@@ -3,6 +3,7 @@
 Separado do CRUD básico (services/shifts.py) e do pipeline (services/offers.py)
 porque esses são fluxos de ação explícita da coordenadora, não automação do tick.
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -91,13 +92,9 @@ def expand_pool(
 
     # Médicos já ofertados (todos os batches anteriores)
     already = set(
-        session.scalars(
-            select(ShiftOffer.doctor_id).where(ShiftOffer.shift_id == shift.id)
-        )
+        session.scalars(select(ShiftOffer.doctor_id).where(ShiftOffer.shift_id == shift.id))
     )
-    candidates = eligible_doctors(session, shift, exclude_doctor_ids=already)[
-        : shift.batch_size
-    ]
+    candidates = eligible_doctors(session, shift, exclude_doctor_ids=already)[: shift.batch_size]
     if not candidates:
         raise UnprocessableEntity("no more eligible doctors available")
 

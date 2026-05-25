@@ -4,6 +4,7 @@ Toda mudança de estado de plantão/oferta grava aqui (PLANO §5, regra dura).
 Alimenta a timeline do detalhe do plantão (bônus) e dá rastreabilidade
 pro pair-debug.
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any

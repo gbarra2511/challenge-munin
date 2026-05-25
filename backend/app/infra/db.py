@@ -8,6 +8,7 @@ lê isto) e dá espaço pro `SELECT FOR UPDATE` do aceite (Dia 3).
 Testabilidade: `init_db` aceita um `session_factory` pronto, então os testes
 ligam a sessão a uma conexão com transação externa que sofre rollback no fim.
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING

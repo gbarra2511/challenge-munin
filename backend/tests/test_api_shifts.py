@@ -1,4 +1,5 @@
 """Testes do CRUD de plantões (coordenador, escopado ao hospital)."""
+
 from __future__ import annotations
 
 from app.infra.hashing import hash_password
@@ -67,17 +68,15 @@ def test_create_shift_naive_datetime_is_422(client, coordinator) -> None:
 
 def test_create_shift_unknown_specialty_is_422(client, coordinator) -> None:
     token = _coord_token(client)
-    resp = client.post(
-        "/shifts", headers=auth_header(token), json=_shift_payload(specialty_id=999)
-    )
+    resp = client.post("/shifts", headers=auth_header(token), json=_shift_payload(specialty_id=999))
     assert resp.status_code == 422
 
 
 def test_list_and_get_shift(client, coordinator) -> None:
     token = _coord_token(client)
-    created = client.post(
-        "/shifts", headers=auth_header(token), json=_shift_payload()
-    ).get_json()["shift"]
+    created = client.post("/shifts", headers=auth_header(token), json=_shift_payload()).get_json()[
+        "shift"
+    ]
 
     listing = client.get("/shifts", headers=auth_header(token))
     assert listing.status_code == 200
@@ -110,9 +109,7 @@ def test_shift_from_other_hospital_is_404(client, coordinator, session) -> None:
 
     # Coordenadora do Central não enxerga o plantão do Sul.
     central_token = _coord_token(client)
-    resp = client.get(
-        f"/shifts/{sul_shift['id']}", headers=auth_header(central_token)
-    )
+    resp = client.get(f"/shifts/{sul_shift['id']}", headers=auth_header(central_token))
     assert resp.status_code == 404
 
     listing = client.get("/shifts", headers=auth_header(central_token))

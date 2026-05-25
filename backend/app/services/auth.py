@@ -3,6 +3,7 @@
 Erro idêntico para conta inexistente e senha errada — evita enumeração
 de e-mails. O `now` é injetável só pra facilitar teste determinístico.
 """
+
 from __future__ import annotations
 
 from datetime import datetime

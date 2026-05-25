@@ -3,6 +3,7 @@
 Pure means: no I/O, no DB, no clock. Só lógica de estado. Testável em
 microssegundos. Ver PLANO.md §5 para o diagrama original.
 """
+
 from __future__ import annotations
 
 from enum import StrEnum
@@ -18,9 +19,7 @@ class ShiftStatus(StrEnum):
 
 
 # Estados terminais: não há transição de saída.
-TERMINAL_STATES: frozenset[ShiftStatus] = frozenset(
-    {ShiftStatus.CONFIRMED, ShiftStatus.CANCELLED}
-)
+TERMINAL_STATES: frozenset[ShiftStatus] = frozenset({ShiftStatus.CONFIRMED, ShiftStatus.CANCELLED})
 
 
 # Pares (origem, destino) válidos. Tudo o que não está aqui é proibido.
@@ -42,9 +41,7 @@ _VALID_TRANSITIONS: frozenset[tuple[ShiftStatus, ShiftStatus]] = frozenset(
 
 class InvalidShiftTransition(Exception):
     def __init__(self, current: ShiftStatus, target: ShiftStatus) -> None:
-        super().__init__(
-            f"Transição de Shift inválida: {current.value} → {target.value}"
-        )
+        super().__init__(f"Transição de Shift inválida: {current.value} → {target.value}")
         self.current = current
         self.target = target
 

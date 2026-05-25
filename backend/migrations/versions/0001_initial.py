@@ -16,6 +16,7 @@ Escrita manual em vez de --autogenerate porque autogenerate não cobre:
 
 Ver PLANO.md §4 para schema completo e §4.7 para decisões.
 """
+
 from __future__ import annotations
 
 import sqlalchemy as sa
@@ -33,14 +34,14 @@ depends_on = None
 # possam referenciar por constante (ex.: SPECIALTY_CARDIOLOGIA = 3).
 # Adicionar novas → criar nova migration, nunca reordenar/remover.
 SPECIALTIES_SEED: list[dict[str, object]] = [
-    {"id": 1, "slug": "clinica-medica",          "name": "Clínica Médica"},
-    {"id": 2, "slug": "pediatria",               "name": "Pediatria"},
-    {"id": 3, "slug": "cardiologia",             "name": "Cardiologia"},
+    {"id": 1, "slug": "clinica-medica", "name": "Clínica Médica"},
+    {"id": 2, "slug": "pediatria", "name": "Pediatria"},
+    {"id": 3, "slug": "cardiologia", "name": "Cardiologia"},
     {"id": 4, "slug": "ginecologia-obstetricia", "name": "Ginecologia e Obstetrícia"},
-    {"id": 5, "slug": "ortopedia",               "name": "Ortopedia"},
-    {"id": 6, "slug": "anestesiologia",          "name": "Anestesiologia"},
-    {"id": 7, "slug": "uti",                     "name": "Medicina Intensiva (UTI)"},
-    {"id": 8, "slug": "pronto-socorro",          "name": "Pronto-Socorro"},
+    {"id": 5, "slug": "ortopedia", "name": "Ortopedia"},
+    {"id": 6, "slug": "anestesiologia", "name": "Anestesiologia"},
+    {"id": 7, "slug": "uti", "name": "Medicina Intensiva (UTI)"},
+    {"id": 8, "slug": "pronto-socorro", "name": "Pronto-Socorro"},
 ]
 
 
@@ -118,8 +119,7 @@ def upgrade() -> None:
     # conflito em qualquer INSERT futuro sem ID. Identity columns no
     # Postgres usam uma sequence interna que pg_get_serial_sequence resolve.
     op.execute(
-        "SELECT setval(pg_get_serial_sequence('specialties', 'id'), "
-        f"{len(SPECIALTIES_SEED)})"
+        f"SELECT setval(pg_get_serial_sequence('specialties', 'id'), {len(SPECIALTIES_SEED)})"
     )
 
     op.create_table(
@@ -194,9 +194,7 @@ def upgrade() -> None:
         sa.Column("starts_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("ends_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("reason", sa.Text()),
-        sa.CheckConstraint(
-            "ends_at > starts_at", name="unavail_window_valid"
-        ),
+        sa.CheckConstraint("ends_at > starts_at", name="unavail_window_valid"),
     )
     op.create_index(
         "ix_unavail_doctor_window",
@@ -267,9 +265,7 @@ def upgrade() -> None:
         ),
         sa.CheckConstraint("ends_at > starts_at", name="shift_window_valid"),
     )
-    op.create_index(
-        "ix_shifts_status_starts_at", "shifts", ["status", "starts_at"]
-    )
+    op.create_index("ix_shifts_status_starts_at", "shifts", ["status", "starts_at"])
     op.create_index(
         "ix_shifts_hospital_starts_at",
         "shifts",
@@ -303,14 +299,11 @@ def upgrade() -> None:
             name="uq_offer_unique_per_batch",
         ),
         sa.CheckConstraint(
-            "status IN ('pending', 'accepted', 'declined', "
-            "'expired', 'superseded')",
+            "status IN ('pending', 'accepted', 'declined', 'expired', 'superseded')",
             name="offer_status_valid",
         ),
     )
-    op.create_index(
-        "ix_offers_doctor_status", "shift_offers", ["doctor_id", "status"]
-    )
+    op.create_index("ix_offers_doctor_status", "shift_offers", ["doctor_id", "status"])
 
     op.create_table(
         "shift_assignments",
@@ -391,9 +384,7 @@ def upgrade() -> None:
             nullable=False,
         ),
     )
-    op.create_index(
-        "ix_audit_shift_created", "audit_events", ["shift_id", "created_at"]
-    )
+    op.create_index("ix_audit_shift_created", "audit_events", ["shift_id", "created_at"])
     op.create_index(
         "ix_audit_hospital_created",
         "audit_events",
@@ -404,9 +395,7 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.drop_table("audit_events")
     op.drop_table("swap_requests")
-    op.drop_index(
-        "one_active_assignment_per_shift", table_name="shift_assignments"
-    )
+    op.drop_index("one_active_assignment_per_shift", table_name="shift_assignments")
     op.drop_table("shift_assignments")
     op.drop_table("shift_offers")
     op.drop_table("shifts")

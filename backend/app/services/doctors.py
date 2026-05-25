@@ -3,6 +3,7 @@
 Criar um médico cria também a conta de login (role='medico', sem hospital
 — o vínculo com hospitais vive em doctor_hospital_affiliations, N:M).
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
@@ -26,16 +27,10 @@ if TYPE_CHECKING:
 
 
 def _validate_specialties(session: Session, specialty_ids: list[int]) -> None:
-    found = set(
-        session.scalars(
-            select(Specialty.id).where(Specialty.id.in_(specialty_ids))
-        )
-    )
+    found = set(session.scalars(select(Specialty.id).where(Specialty.id.in_(specialty_ids))))
     missing = set(specialty_ids) - found
     if missing:
-        raise UnprocessableEntity(
-            "unknown specialty_ids", details={"missing": sorted(missing)}
-        )
+        raise UnprocessableEntity("unknown specialty_ids", details={"missing": sorted(missing)})
 
 
 def create_doctor(
@@ -72,9 +67,7 @@ def create_doctor(
         session.add(DoctorSpecialty(doctor_id=doctor.id, specialty_id=sid))
     for hid in set(hospital_ids):
         session.add(
-            DoctorHospitalAffiliation(
-                doctor_id=doctor.id, hospital_id=hid, status="active"
-            )
+            DoctorHospitalAffiliation(doctor_id=doctor.id, hospital_id=hid, status="active")
         )
 
     session.commit()
@@ -86,9 +79,7 @@ def doctor_view(session: Session, doctor: Doctor) -> dict[str, Any]:
     """Visão de um médico individual (usado no GET /doctors/:id)."""
     specialty_ids = sorted(
         session.scalars(
-            select(DoctorSpecialty.specialty_id).where(
-                DoctorSpecialty.doctor_id == doctor.id
-            )
+            select(DoctorSpecialty.specialty_id).where(DoctorSpecialty.doctor_id == doctor.id)
         )
     )
     hospital_ids = [
@@ -118,8 +109,9 @@ def doctors_view_batch(session: Session, doctors: list[Doctor]) -> list[dict[str
 
     # Bulk load specialties
     spec_rows = session.execute(
-        select(DoctorSpecialty.doctor_id, DoctorSpecialty.specialty_id)
-        .where(DoctorSpecialty.doctor_id.in_(ids))
+        select(DoctorSpecialty.doctor_id, DoctorSpecialty.specialty_id).where(
+            DoctorSpecialty.doctor_id.in_(ids)
+        )
     ).all()
     specs_by_doctor: dict[UUID, list[int]] = {}
     for doctor_id, spec_id in spec_rows:
@@ -127,8 +119,7 @@ def doctors_view_batch(session: Session, doctors: list[Doctor]) -> list[dict[str
 
     # Bulk load affiliations
     aff_rows = session.execute(
-        select(DoctorHospitalAffiliation.doctor_id, DoctorHospitalAffiliation.hospital_id)
-        .where(
+        select(DoctorHospitalAffiliation.doctor_id, DoctorHospitalAffiliation.hospital_id).where(
             DoctorHospitalAffiliation.doctor_id.in_(ids),
             DoctorHospitalAffiliation.status == "active",
         )
@@ -157,14 +148,12 @@ def resolve_doctor(session: Session, account_id: UUID) -> Doctor:
     return doctor
 
 
-def list_doctors(
-    session: Session, *, specialty_id: int | None = None
-) -> list[Doctor]:
+def list_doctors(session: Session, *, specialty_id: int | None = None) -> list[Doctor]:
     stmt = select(Doctor)
     if specialty_id is not None:
-        stmt = stmt.join(
-            DoctorSpecialty, DoctorSpecialty.doctor_id == Doctor.id
-        ).where(DoctorSpecialty.specialty_id == specialty_id)
+        stmt = stmt.join(DoctorSpecialty, DoctorSpecialty.doctor_id == Doctor.id).where(
+            DoctorSpecialty.specialty_id == specialty_id
+        )
     stmt = stmt.order_by(Doctor.name)
     return list(session.scalars(stmt))
 
@@ -190,21 +179,16 @@ def update_doctor(
     if specialty_ids is not None:
         _validate_specialties(session, specialty_ids)
         # Remove existentes e recria
-        session.execute(
-            select(DoctorSpecialty)
-            .where(DoctorSpecialty.doctor_id == doctor.id)
-        )
+        session.execute(select(DoctorSpecialty).where(DoctorSpecialty.doctor_id == doctor.id))
         from sqlalchemy import delete
-        session.execute(
-            delete(DoctorSpecialty).where(DoctorSpecialty.doctor_id == doctor.id)
-        )
+
+        session.execute(delete(DoctorSpecialty).where(DoctorSpecialty.doctor_id == doctor.id))
         for sid in set(specialty_ids):
             session.add(DoctorSpecialty(doctor_id=doctor.id, specialty_id=sid))
 
     session.commit()
     session.refresh(doctor)
     return doctor
-
 
 
 def toggle_affiliation(
@@ -232,8 +216,9 @@ def doctor_stats(
     doctor_id: UUID,
 ) -> dict[str, Any]:
     """Calcula métricas de performance de um médico."""
-    from sqlalchemy import func, extract, case
-    from app.models import ShiftOffer, ShiftAssignment
+    from sqlalchemy import case, extract, func
+
+    from app.models import ShiftAssignment, ShiftOffer
 
     # Offer stats
     offer_row = session.execute(
@@ -289,4 +274,3 @@ def doctor_stats(
         "avg_response_min": avg_response_min,
         "total_assignments": assign_row.total_assignments or 0,
     }
-

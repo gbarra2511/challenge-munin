@@ -5,6 +5,7 @@ Forma padrão de resposta de erro:
 
 Serviços lançam `ApiError` (ou subclasses); handlers viram o JSON.
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
@@ -84,8 +85,7 @@ def register_error_handlers(app: Flask) -> None:
     @app.errorhandler(PydanticValidationError)
     def _handle_pydantic(exc: PydanticValidationError) -> ResponseReturnValue:
         details = [
-            {"loc": list(e["loc"]), "msg": e["msg"], "type": e["type"]}
-            for e in exc.errors()
+            {"loc": list(e["loc"]), "msg": e["msg"], "type": e["type"]} for e in exc.errors()
         ]
         return jsonify(_payload("validation_error", "invalid request body", details)), 422
 

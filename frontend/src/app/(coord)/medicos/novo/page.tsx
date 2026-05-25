@@ -23,7 +23,7 @@ export default function NovoMedicoPage() {
   const [specialtyId, setSpecialtyId] = useState<number>(SPECIALTIES[0].id);
 
   const createMut = useMutation({
-    mutationFn: (body: any) =>
+    mutationFn: (body: Record<string, unknown>) =>
       api("/doctors", {
         method: "POST",
         body: JSON.stringify(body),

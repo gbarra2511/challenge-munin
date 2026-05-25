@@ -1,4 +1,5 @@
 """Testes HTTP do médico: aceitar/recusar oferta e /me/offers."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta

@@ -2,6 +2,7 @@
 
 Schema completo em PLANO.md §4. Racional das decisões em §4.7.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -36,9 +37,7 @@ class Base(DeclarativeBase):
 class Hospital(Base):
     __tablename__ = "hospitals"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(Text, nullable=False)
 
 
@@ -57,9 +56,7 @@ class Account(Base):
         ),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email: Mapped[str] = mapped_column(CITEXT, unique=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(Text, nullable=False)
     role: Mapped[str] = mapped_column(Text, nullable=False)
@@ -74,9 +71,7 @@ class Account(Base):
 class Doctor(Base):
     __tablename__ = "doctors"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     account_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("accounts.id"), unique=True
     )
@@ -99,9 +94,7 @@ class Specialty(Base):
 
 class DoctorSpecialty(Base):
     __tablename__ = "doctor_specialties"
-    __table_args__ = (
-        Index("ix_doctor_specialties_specialty_id", "specialty_id"),
-    )
+    __table_args__ = (Index("ix_doctor_specialties_specialty_id", "specialty_id"),)
 
     doctor_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
@@ -121,9 +114,7 @@ class DoctorSpecialty(Base):
 class DoctorHospitalAffiliation(Base):
     __tablename__ = "doctor_hospital_affiliations"
     __table_args__ = (
-        CheckConstraint(
-            "status IN ('active', 'inactive')", name="dha_status_valid"
-        ),
+        CheckConstraint("status IN ('active', 'inactive')", name="dha_status_valid"),
         Index("ix_dha_hospital_status", "hospital_id", "status"),
     )
 
@@ -135,9 +126,7 @@ class DoctorHospitalAffiliation(Base):
     hospital_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("hospitals.id"), primary_key=True
     )
-    status: Mapped[str] = mapped_column(
-        Text, nullable=False, server_default=text("'active'")
-    )
+    status: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'active'"))
     joined_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=text("now()"), nullable=False
     )
@@ -160,20 +149,14 @@ class DoctorUnavailability(Base):
         ),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     doctor_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("doctors.id", ondelete="CASCADE"),
         nullable=False,
     )
-    starts_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
-    ends_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     reason: Mapped[str | None] = mapped_column(Text)
 
 
@@ -195,38 +178,26 @@ class Shift(Base):
         Index("ix_shifts_hospital_starts_at", "hospital_id", "starts_at"),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     hospital_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("hospitals.id"), nullable=False
     )
     specialty_id: Mapped[int] = mapped_column(
         SmallInteger, ForeignKey("specialties.id"), nullable=False
     )
-    starts_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
-    ends_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     rate_cents: Mapped[int] = mapped_column(Integer, nullable=False)
     status: Mapped[str] = mapped_column(Text, nullable=False)
-    current_batch: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default=text("0")
-    )
-    batch_size: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default=text("3")
-    )
+    current_batch: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    batch_size: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("3"))
     batch_window_minutes: Mapped[int] = mapped_column(
         Integer, nullable=False, server_default=text("30")
     )
     escalate_hours_before: Mapped[int] = mapped_column(
         Integer, nullable=False, server_default=text("6")
     )
-    version: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default=text("0")
-    )
+    version: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=text("now()"), nullable=False
     )
@@ -242,16 +213,13 @@ class ShiftOffer(Base):
             name="uq_offer_unique_per_batch",
         ),
         CheckConstraint(
-            "status IN ('pending', 'accepted', 'declined', "
-            "'expired', 'superseded')",
+            "status IN ('pending', 'accepted', 'declined', 'expired', 'superseded')",
             name="offer_status_valid",
         ),
         Index("ix_offers_doctor_status", "doctor_id", "status"),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     shift_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("shifts.id"), nullable=False
     )
@@ -260,12 +228,8 @@ class ShiftOffer(Base):
     )
     batch_number: Mapped[int] = mapped_column(Integer, nullable=False)
     status: Mapped[str] = mapped_column(Text, nullable=False)
-    sent_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
-    expires_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
@@ -286,9 +250,7 @@ class ShiftAssignment(Base):
         ),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     shift_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("shifts.id"), nullable=False
     )
@@ -296,9 +258,7 @@ class ShiftAssignment(Base):
         UUID(as_uuid=True), ForeignKey("doctors.id"), nullable=False
     )
     status: Mapped[str] = mapped_column(Text, nullable=False)
-    accepted_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    accepted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     checked_in_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
@@ -316,9 +276,7 @@ class SwapRequest(Base):
         ),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     from_assignment_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("shift_assignments.id"),

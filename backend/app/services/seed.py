@@ -11,10 +11,11 @@ Credenciais (documentadas no README do projeto):
     coordenadora@hospital.com / 123456
     medico@hospital.com       / 123456
 """
+
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 from sqlalchemy import func, select, text
@@ -40,15 +41,57 @@ if TYPE_CHECKING:
 DEMO_PASSWORD = "123456"
 
 _FIRST = [
-    "Ana", "Bruno", "Carla", "Diego", "Elena", "Felipe", "Gabriela", "Henrique",
-    "Isabela", "João", "Karina", "Lucas", "Marina", "Nuno", "Olívia", "Paulo",
-    "Quésia", "Rafael", "Sofia", "Tiago", "Ursula", "Vitor", "Wagner", "Xênia",
-    "Yara", "Zeca", "Beatriz", "Caio", "Daniela",
+    "Ana",
+    "Bruno",
+    "Carla",
+    "Diego",
+    "Elena",
+    "Felipe",
+    "Gabriela",
+    "Henrique",
+    "Isabela",
+    "João",
+    "Karina",
+    "Lucas",
+    "Marina",
+    "Nuno",
+    "Olívia",
+    "Paulo",
+    "Quésia",
+    "Rafael",
+    "Sofia",
+    "Tiago",
+    "Ursula",
+    "Vitor",
+    "Wagner",
+    "Xênia",
+    "Yara",
+    "Zeca",
+    "Beatriz",
+    "Caio",
+    "Daniela",
 ]
 _LAST = [
-    "Costa", "Almeida", "Pereira", "Souza", "Lima", "Carvalho", "Ribeiro",
-    "Gomes", "Martins", "Rocha", "Barbosa", "Araújo", "Nunes", "Teixeira",
-    "Cardoso", "Correia", "Dias", "Castro", "Campos", "Moreira",
+    "Costa",
+    "Almeida",
+    "Pereira",
+    "Souza",
+    "Lima",
+    "Carvalho",
+    "Ribeiro",
+    "Gomes",
+    "Martins",
+    "Rocha",
+    "Barbosa",
+    "Araújo",
+    "Nunes",
+    "Teixeira",
+    "Cardoso",
+    "Correia",
+    "Dias",
+    "Castro",
+    "Campos",
+    "Moreira",
 ]
 
 # Tabela de truncamento: tudo de domínio, exceto `specialties` (vem da migration).
@@ -61,9 +104,7 @@ _TRUNCATE = (
 
 def _shift_at(now: datetime, *, days: float, hour: int, dur_h: int = 12):
     """Início ancorado em `now + days`, na hora local pedida; fim = +dur_h."""
-    start = (now + timedelta(days=days)).replace(
-        hour=hour, minute=0, second=0, microsecond=0
-    )
+    start = (now + timedelta(days=days)).replace(hour=hour, minute=0, second=0, microsecond=0)
     return start, start + timedelta(hours=dur_h)
 
 
@@ -71,7 +112,7 @@ def run_seed(session: Session, *, defaults: dict[str, int]) -> dict:
     session.execute(text(_TRUNCATE))
     session.commit()
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     # Inserção em estágios (hospitais → contas → médicos → vínculos) com flush
     # entre cada um, garantindo a ordem das FKs.
@@ -99,13 +140,21 @@ def run_seed(session: Session, *, defaults: dict[str, int]) -> dict:
     demo_acc_id = uuid.uuid4()
     demo_doc_id = uuid.uuid4()
     accounts.append(
-        Account(id=demo_acc_id, email="medico@hospital.com",
-                password_hash=hash_password(DEMO_PASSWORD), role="medico",
-                hospital_id=None)
+        Account(
+            id=demo_acc_id,
+            email="medico@hospital.com",
+            password_hash=hash_password(DEMO_PASSWORD),
+            role="medico",
+            hospital_id=None,
+        )
     )
     doctors.append(
-        Doctor(id=demo_doc_id, account_id=demo_acc_id,
-               name="Dra. Ana Beatriz Costa", phone="+55 11 90000-0000")
+        Doctor(
+            id=demo_doc_id,
+            account_id=demo_acc_id,
+            name="Dra. Ana Beatriz Costa",
+            phone="+55 11 90000-0000",
+        )
     )
     links += [
         DoctorSpecialty(doctor_id=demo_doc_id, specialty_id=1),
@@ -121,13 +170,21 @@ def run_seed(session: Session, *, defaults: dict[str, int]) -> dict:
         first = _FIRST[i % len(_FIRST)]
         last = _LAST[i % len(_LAST)]
         accounts.append(
-            Account(id=acc_id, email=f"medico{i}@hospital.com",
-                    password_hash=hash_password(DEMO_PASSWORD), role="medico",
-                    hospital_id=None)
+            Account(
+                id=acc_id,
+                email=f"medico{i}@hospital.com",
+                password_hash=hash_password(DEMO_PASSWORD),
+                role="medico",
+                hospital_id=None,
+            )
         )
         doctors.append(
-            Doctor(id=doc_id, account_id=acc_id, name=f"Dr(a). {first} {last}",
-                   phone=f"+55 11 9{i:04d}-0000")
+            Doctor(
+                id=doc_id,
+                account_id=acc_id,
+                name=f"Dr(a). {first} {last}",
+                phone=f"+55 11 9{i:04d}-0000",
+            )
         )
 
         primary = (i % 8) + 1
@@ -142,16 +199,23 @@ def run_seed(session: Session, *, defaults: dict[str, int]) -> dict:
         if not to_a and not to_b:
             to_a = True
         if to_a:
-            links.append(DoctorHospitalAffiliation(doctor_id=doc_id, hospital_id=hosp_a.id, status="active"))
+            links.append(
+                DoctorHospitalAffiliation(doctor_id=doc_id, hospital_id=hosp_a.id, status="active")
+            )
             for s in specs:
                 pool_a[s].append(doc_id)
         if to_b:
-            links.append(DoctorHospitalAffiliation(doctor_id=doc_id, hospital_id=hosp_b.id, status="active"))
+            links.append(
+                DoctorHospitalAffiliation(doctor_id=doc_id, hospital_id=hosp_b.id, status="active")
+            )
 
         if i % 7 == 0:
             us, ue = _shift_at(now, days=2, hour=8, dur_h=24)
-            links.append(DoctorUnavailability(id=uuid.uuid4(), doctor_id=doc_id,
-                                              starts_at=us, ends_at=ue, reason="Folga"))
+            links.append(
+                DoctorUnavailability(
+                    id=uuid.uuid4(), doctor_id=doc_id, starts_at=us, ends_at=ue, reason="Folga"
+                )
+            )
 
     session.add_all(accounts)
     session.flush()
@@ -162,13 +226,20 @@ def run_seed(session: Session, *, defaults: dict[str, int]) -> dict:
 
     d = defaults
 
-    def mk(specialty: int, *, days: float, hour: int, rate: int,
-           window: int | None = None) -> Shift:
+    def mk(
+        specialty: int, *, days: float, hour: int, rate: int, window: int | None = None
+    ) -> Shift:
         s, e = _shift_at(now, days=days, hour=hour)
         return create_shift(
-            session, hospital_id=hosp_a.id, specialty_id=specialty,
-            starts_at=s, ends_at=e, rate_cents=rate,
-            batch_size=None, batch_window_minutes=window, escalate_hours_before=None,
+            session,
+            hospital_id=hosp_a.id,
+            specialty_id=specialty,
+            starts_at=s,
+            ends_at=e,
+            rate_cents=rate,
+            batch_size=None,
+            batch_window_minutes=window,
+            escalate_hours_before=None,
             defaults=d,
         )
 
@@ -206,8 +277,11 @@ def run_seed(session: Session, *, defaults: dict[str, int]) -> dict:
     risk.current_batch = 1
     risk.version += 1
     record_event(
-        session, event_type="shift.escalated", shift_id=risk.id,
-        hospital_id=hosp_a.id, actor_type="system",
+        session,
+        event_type="shift.escalated",
+        shift_id=risk.id,
+        hospital_id=hosp_a.id,
+        actor_type="system",
         payload={"reason": "no_eligible_or_too_close"},
     )
     session.commit()

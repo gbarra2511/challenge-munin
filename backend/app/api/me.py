@@ -4,6 +4,7 @@
 médico tem afiliação ATIVA — defesa contra oferta "vazada" de outro
 hospital (teste obrigatório nº 3).
 """
+
 from __future__ import annotations
 
 from flask import Blueprint, jsonify, request
@@ -68,7 +69,9 @@ def offers():  # type: ignore[no-untyped-def]
         stmt = stmt.where(ShiftOffer.status == "pending")
 
     rows = session.execute(stmt).all()
-    return jsonify({"offers": [_offer_view(offer, shift, hospital) for offer, shift, hospital in rows]})
+    return jsonify(
+        {"offers": [_offer_view(offer, shift, hospital) for offer, shift, hospital in rows]}
+    )
 
 
 @bp.get("/assignments")
@@ -112,17 +115,11 @@ def profile():  # type: ignore[no-untyped-def]
     session = get_session()
     doctor = resolve_doctor(session, current_account_id())
     from app.services.doctors import doctor_view
+
     view = doctor_view(session, doctor)
     # Enriquece com nomes de hospitais e especialidades
-    from app.models import Specialty
-    spec_names = dict(
-        session.execute(select(Specialty.id, Specialty.name)).all()
-    )
-    hosp_names = dict(
-        session.execute(
-            select(Hospital.id, Hospital.name)
-        ).all()
-    )
+    spec_names = dict(session.execute(select(Specialty.id, Specialty.name)).all())
+    hosp_names = dict(session.execute(select(Hospital.id, Hospital.name)).all())
     # Pega status das afiliações
     affs = session.execute(
         select(
@@ -133,24 +130,26 @@ def profile():  # type: ignore[no-untyped-def]
 
     account = session.get(Account, current_account_id())
 
-    return jsonify({
-        "profile": {
-            **view,
-            "email": account.email if account else None,
-            "specialties": [
-                {"id": sid, "name": spec_names.get(sid, str(sid))}
-                for sid in view["specialty_ids"]
-            ],
-            "hospitals": [
-                {
-                    "id": str(hid),
-                    "name": hosp_names.get(hid, ""),
-                    "status": status,
-                }
-                for hid, status in affs
-            ],
+    return jsonify(
+        {
+            "profile": {
+                **view,
+                "email": account.email if account else None,
+                "specialties": [
+                    {"id": sid, "name": spec_names.get(sid, str(sid))}
+                    for sid in view["specialty_ids"]
+                ],
+                "hospitals": [
+                    {
+                        "id": str(hid),
+                        "name": hosp_names.get(hid, ""),
+                        "status": status,
+                    }
+                    for hid, status in affs
+                ],
+            }
         }
-    })
+    )
 
 
 @bp.patch("/profile")
@@ -181,18 +180,21 @@ def my_unavailabilities():  # type: ignore[no-untyped-def]
     session = get_session()
     doctor = resolve_doctor(session, current_account_id())
     from app.services.unavailabilities import list_unavailabilities
+
     items = list_unavailabilities(session, doctor.id)
-    return jsonify({
-        "unavailabilities": [
-            {
-                "id": str(u.id),
-                "starts_at": u.starts_at.isoformat(),
-                "ends_at": u.ends_at.isoformat(),
-                "reason": u.reason,
-            }
-            for u in items
-        ]
-    })
+    return jsonify(
+        {
+            "unavailabilities": [
+                {
+                    "id": str(u.id),
+                    "starts_at": u.starts_at.isoformat(),
+                    "ends_at": u.ends_at.isoformat(),
+                    "reason": u.reason,
+                }
+                for u in items
+            ]
+        }
+    )
 
 
 @bp.post("/unavailabilities")
@@ -203,6 +205,7 @@ def create_my_unavailability():  # type: ignore[no-untyped-def]
     body = request.get_json(force=True, silent=True) or {}
 
     from datetime import datetime as dt
+
     from app.api.errors import UnprocessableEntity
     from app.services.unavailabilities import create_unavailability
 
@@ -213,19 +216,26 @@ def create_my_unavailability():  # type: ignore[no-untyped-def]
         raise UnprocessableEntity("starts_at and ends_at are required (ISO format)") from exc
 
     u_list = create_unavailability(
-        session, doctor.id, starts_at=starts_at, ends_at=ends_at, reason=body.get("reason"), repeat_weeks=body.get("repeat_weeks", 0)
+        session,
+        doctor.id,
+        starts_at=starts_at,
+        ends_at=ends_at,
+        reason=body.get("reason"),
+        repeat_weeks=body.get("repeat_weeks", 0),
     )
-    return jsonify({
-        "unavailabilities": [
-            {
-                "id": str(u.id),
-                "starts_at": u.starts_at.isoformat(),
-                "ends_at": u.ends_at.isoformat(),
-                "reason": u.reason,
-            }
-            for u in u_list
-        ]
-    }), 201
+    return jsonify(
+        {
+            "unavailabilities": [
+                {
+                    "id": str(u.id),
+                    "starts_at": u.starts_at.isoformat(),
+                    "ends_at": u.ends_at.isoformat(),
+                    "reason": u.reason,
+                }
+                for u in u_list
+            ]
+        }
+    ), 201
 
 
 @bp.delete("/unavailabilities/<uuid:unavail_id>")
@@ -234,6 +244,6 @@ def delete_my_unavailability(unavail_id):  # type: ignore[no-untyped-def]
     session = get_session()
     doctor = resolve_doctor(session, current_account_id())
     from app.services.unavailabilities import delete_unavailability
+
     delete_unavailability(session, unavail_id, doctor_id=doctor.id)
     return "", 204
-

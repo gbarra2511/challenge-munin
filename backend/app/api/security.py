@@ -4,6 +4,7 @@
 valida, e guarda os claims em `flask.g`. Sem papéis → só exige token
 válido. Handlers leem o ator via `current_claims()`.
 """
+
 from __future__ import annotations
 
 import hmac

@@ -1,4 +1,5 @@
 """Endpoints de máquina: o tick do pipeline. Protegido por TICK_SECRET."""
+
 from __future__ import annotations
 
 from flask import Blueprint, jsonify

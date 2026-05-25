@@ -4,6 +4,7 @@ Pure boundary: recebe/devolve strings. Sem dependência de settings.
 12 rounds é o padrão razoável pra produção (~250ms no laptop).
 Testes podem reduzir via parâmetro pra rodar em ms.
 """
+
 from __future__ import annotations
 
 import bcrypt

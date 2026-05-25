@@ -12,6 +12,7 @@ O coração do sistema. Duas peças críticas:
 Todas as funções recebem `now` injetável (default = agora UTC) pra teste
 determinístico com clock congelado.
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
@@ -25,7 +26,7 @@ from app.domain import shift as shift_sm
 from app.domain.shift import ShiftStatus
 from app.models import Doctor, Shift, ShiftAssignment, ShiftOffer
 from app.services.audit import record_event
-from app.services.ranking import eligible_doctors, ranked_doctors
+from app.services.ranking import ranked_doctors
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -122,11 +123,7 @@ def open_offers(
 
 
 def _offered_doctor_ids(session: Session, shift_id: UUID) -> set[UUID]:
-    return set(
-        session.scalars(
-            select(ShiftOffer.doctor_id).where(ShiftOffer.shift_id == shift_id)
-        )
-    )
+    return set(session.scalars(select(ShiftOffer.doctor_id).where(ShiftOffer.shift_id == shift_id)))
 
 
 def _within_escalation_window(shift: Shift, now: datetime) -> bool:
@@ -215,11 +212,7 @@ def run_tick(session: Session, *, now: datetime | None = None) -> dict[str, int]
     stats = {"processed": 0, "advanced": 0, "escalated": 0, "expired_offers": 0}
 
     shifts = list(
-        session.scalars(
-            select(Shift)
-            .where(Shift.status == ShiftStatus.OFFERING)
-            .with_for_update()
-        )
+        session.scalars(select(Shift).where(Shift.status == ShiftStatus.OFFERING).with_for_update())
     )
 
     for shift in shifts:
@@ -247,16 +240,12 @@ def accept_offer(
     now = _now(now)
 
     # Leitura sem lock só pra descobrir o shift desta oferta.
-    shift_id = session.scalar(
-        select(ShiftOffer.shift_id).where(ShiftOffer.id == offer_id)
-    )
+    shift_id = session.scalar(select(ShiftOffer.shift_id).where(ShiftOffer.id == offer_id))
     if shift_id is None:
         raise NotFound("offer not found")
 
     # 1) trava o shift — serializa todos os aceites concorrentes do plantão.
-    shift = session.scalars(
-        select(Shift).where(Shift.id == shift_id).with_for_update()
-    ).one()
+    shift = session.scalars(select(Shift).where(Shift.id == shift_id).with_for_update()).one()
     # 2) sob o lock do shift, trava/relê a oferta.
     offer = session.scalars(
         select(ShiftOffer).where(ShiftOffer.id == offer_id).with_for_update()
@@ -287,9 +276,7 @@ def accept_offer(
     offer.status = "accepted"
     offer.responded_at = now
     session.add(
-        ShiftAssignment(
-            shift_id=shift.id, doctor_id=doctor_id, status="active", accepted_at=now
-        )
+        ShiftAssignment(shift_id=shift.id, doctor_id=doctor_id, status="active", accepted_at=now)
     )
     session.execute(
         update(ShiftOffer)

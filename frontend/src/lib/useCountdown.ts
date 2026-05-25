@@ -7,6 +7,7 @@ import { msUntil } from "@/lib/format";
 export function useCountdown(expiresAt: string): number {
   const [ms, setMs] = useState(() => msUntil(expiresAt));
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMs(msUntil(expiresAt));
     const id = setInterval(() => setMs(msUntil(expiresAt)), 1000);
     return () => clearInterval(id);

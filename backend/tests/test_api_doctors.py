@@ -1,4 +1,5 @@
 """Testes do CRUD de médicos (coordenador)."""
+
 from __future__ import annotations
 
 from tests.conftest import auth_header, login
@@ -121,7 +122,5 @@ def test_list_doctors_filter_by_specialty(client, coordinator) -> None:
 
 def test_get_missing_doctor_is_404(client, coordinator) -> None:
     token = _coord_token(client)
-    resp = client.get(
-        "/doctors/00000000-0000-0000-0000-000000000000", headers=auth_header(token)
-    )
+    resp = client.get("/doctors/00000000-0000-0000-0000-000000000000", headers=auth_header(token))
     assert resp.status_code == 404

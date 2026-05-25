@@ -11,6 +11,7 @@ Payload (claims):
 - iat: emissão (epoch seconds)
 - exp: expiração (epoch seconds)
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta

@@ -13,6 +13,7 @@ Heurística de 4 fatores:
 Médico sem histórico recebe score neutro (50).
 Stats calculados em 2 queries bulk (sem N+1).
 """
+
 from __future__ import annotations
 
 from collections.abc import Iterable
@@ -21,7 +22,7 @@ from datetime import timedelta
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
-from sqlalchemy import exists, func, select, case, extract
+from sqlalchemy import case, exists, extract, func, select
 
 from app.models import (
     Doctor,
@@ -52,7 +53,7 @@ WEIGHT_RESPONSE = 0.15
 
 @dataclass
 class RankingBreakdown:
-    acceptance_rate: float | None = None    # 0.0–1.0
+    acceptance_rate: float | None = None  # 0.0–1.0
     days_since_last: int | None = None
     weekly_load: int = 0
     avg_response_min: float | None = None
@@ -78,14 +79,10 @@ def eligible_doctors(
     *,
     exclude_doctor_ids: Iterable[UUID] = (),
 ) -> list[Doctor]:
-    overlaps = func.tstzrange(
-        DoctorUnavailability.starts_at, DoctorUnavailability.ends_at
-    ).op("&&")(func.tstzrange(shift.starts_at, shift.ends_at))
-    has_conflict = (
-        exists()
-        .where(DoctorUnavailability.doctor_id == Doctor.id)
-        .where(overlaps)
-    )
+    overlaps = func.tstzrange(DoctorUnavailability.starts_at, DoctorUnavailability.ends_at).op(
+        "&&"
+    )(func.tstzrange(shift.starts_at, shift.ends_at))
+    has_conflict = exists().where(DoctorUnavailability.doctor_id == Doctor.id).where(overlaps)
 
     stmt = (
         select(Doctor)
@@ -113,9 +110,7 @@ def eligible_doctors(
 # --- stats bulk ---
 
 
-def _offer_stats_bulk(
-    session: Session, doctor_ids: list[UUID]
-) -> dict[UUID, dict[str, Any]]:
+def _offer_stats_bulk(session: Session, doctor_ids: list[UUID]) -> dict[UUID, dict[str, Any]]:
     """1 query: por doctor_id → {accepted, declined, expired, total,
     avg_response_seconds, last_accepted_at}."""
     if not doctor_ids:
@@ -175,9 +170,9 @@ def _assignment_stats_bulk(
     stmt = (
         select(
             ShiftAssignment.doctor_id,
-            func.count().filter(
-                ShiftAssignment.accepted_at.between(week_start, week_end)
-            ).label("weekly_load"),
+            func.count()
+            .filter(ShiftAssignment.accepted_at.between(week_start, week_end))
+            .label("weekly_load"),
             func.max(ShiftAssignment.accepted_at).label("last_accepted_at"),
         )
         .where(
@@ -245,7 +240,8 @@ def ranked_doctors(
     now: datetime | None = None,
 ) -> list[RankedDoctor]:
     """Retorna médicos elegíveis ordenados por score (desc) com breakdown."""
-    from datetime import UTC, datetime as dt
+    from datetime import UTC
+    from datetime import datetime as dt
 
     now = now or dt.now(UTC)
 

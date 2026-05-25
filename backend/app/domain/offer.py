@@ -2,6 +2,7 @@
 
 Pure means: no I/O, no DB, no clock. Ver PLANO.md §5 (Oferta individual).
 """
+
 from __future__ import annotations
 
 from enum import StrEnum
@@ -39,9 +40,7 @@ _VALID_TRANSITIONS: frozenset[tuple[OfferStatus, OfferStatus]] = frozenset(
 
 class InvalidOfferTransition(Exception):
     def __init__(self, current: OfferStatus, target: OfferStatus) -> None:
-        super().__init__(
-            f"Transição de Offer inválida: {current.value} → {target.value}"
-        )
+        super().__init__(f"Transição de Offer inválida: {current.value} → {target.value}")
         self.current = current
         self.target = target
 

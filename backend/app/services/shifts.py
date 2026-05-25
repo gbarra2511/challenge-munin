@@ -4,6 +4,7 @@ da coordenadora autenticada.
 A criação não dispara ofertas — o plantão nasce 'open'. O pipeline de
 ofertas (Dia 2-3) é quem move 'open' → 'offering'.
 """
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -33,9 +34,7 @@ def create_shift(
     defaults: dict[str, int],
 ) -> Shift:
     if session.get(Specialty, specialty_id) is None:
-        raise UnprocessableEntity(
-            "unknown specialty_id", details={"specialty_id": specialty_id}
-        )
+        raise UnprocessableEntity("unknown specialty_id", details={"specialty_id": specialty_id})
 
     shift = Shift(
         hospital_id=hospital_id,

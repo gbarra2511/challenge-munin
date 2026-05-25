@@ -3,6 +3,7 @@
 Usado tanto pela coordenadora (via /doctors/:id/unavailabilities)
 quanto pelo médico (via /me/unavailabilities).
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -56,11 +57,12 @@ def create_unavailability(
 
     created = []
     from datetime import timedelta
+
     for i in range(max(1, repeat_weeks + 1)):
         offset = timedelta(weeks=i)
         u_start = starts_at + offset
         u_end = ends_at + offset
-        
+
         unavail = DoctorUnavailability(
             doctor_id=doctor_id,
             starts_at=u_start,
@@ -73,7 +75,7 @@ def create_unavailability(
     session.commit()
     for unavail in created:
         session.refresh(unavail)
-    
+
     return created
 
 

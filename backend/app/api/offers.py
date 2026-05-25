@@ -1,4 +1,5 @@
 """Ações do médico sobre uma oferta: aceitar e recusar."""
+
 from __future__ import annotations
 
 from flask import Blueprint, jsonify

@@ -5,6 +5,7 @@ ao ciclo de request, registra error handlers JSON, CORS e os blueprints.
 Testes podem injetar `settings` e um `session_factory` ligado a uma
 transação que sofre rollback.
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -81,9 +82,7 @@ def _register_cors(app: Flask, origins_csv: str) -> None:
                 resp.headers["Access-Control-Allow-Origin"] = origin
                 resp.headers["Vary"] = "Origin"
                 resp.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type"
-                resp.headers["Access-Control-Allow-Methods"] = (
-                    "GET, POST, PATCH, DELETE, OPTIONS"
-                )
+                resp.headers["Access-Control-Allow-Methods"] = "GET, POST, PATCH, DELETE, OPTIONS"
                 resp.headers["Access-Control-Max-Age"] = "600"
                 return resp
 
@@ -94,9 +93,6 @@ def _register_cors(app: Flask, origins_csv: str) -> None:
             resp.headers["Access-Control-Allow-Origin"] = origin
             resp.headers["Vary"] = "Origin"
             resp.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type"
-            resp.headers["Access-Control-Allow-Methods"] = (
-                "GET, POST, PATCH, DELETE, OPTIONS"
-            )
+            resp.headers["Access-Control-Allow-Methods"] = "GET, POST, PATCH, DELETE, OPTIONS"
             resp.headers["Access-Control-Max-Age"] = "600"
         return resp
-

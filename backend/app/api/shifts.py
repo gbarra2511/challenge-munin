@@ -1,4 +1,5 @@
 """Blueprint de plantões (CRUD + ações de coordenador, escopado ao hospital)."""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -107,10 +108,12 @@ def expand(shift_id):  # type: ignore[no-untyped-def]
         hospital_id=current_hospital_id(),
         actor_id=current_account_id(),
     )
-    return jsonify({
-        "shift": shift_view(result["shift"]),
-        "new_offers": result["new_offers"],
-    })
+    return jsonify(
+        {
+            "shift": shift_view(result["shift"]),
+            "new_offers": result["new_offers"],
+        }
+    )
 
 
 @bp.get("/<uuid:shift_id>/offers")
