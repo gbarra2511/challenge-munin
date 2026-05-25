@@ -42,13 +42,48 @@ IPv6/`::1` é do AirPlay Receiver. O frontend já aponta pra `127.0.0.1` via `.e
 | Frontend (Hallmark + telas) | ✅ feito (Dias 4–6: auth + todas as telas + ações completas) |
 | Qualidade de código + robustez | ✅ feito (CORS, N+1, error boundary, JSON.parse) |
 | Deploy público + seed | ⏳ pendente |
-| Testes obrigatórios (5) | ✅ feito (5/5 + extras — 83/83) |
+| Testes obrigatórios (5) | ✅ feito (5/5 + extras — 109/109) |
 | README final | ⏳ pendente |
 | Bônus | ⏳ depois do obrigatório |
 
 ---
 
 ## Feito
+
+### Cobertura de testes do código novo + bug de ranking (2026-05-25)
+
+Revisão de alinhamento ao PLANO após os commits de WFM completo. O código
+ficou aderente, mas as ~3200 linhas novas (ranking, gestão de médicos,
+indisponibilidades, perfil) estavam **sem testes**. Fechado esse flanco com
+**26 testes novos (83 → 109)**, ruff limpo.
+
+- **`test_ranking.py`** (6): elegibilidade (specialty/hospital, exclusão por
+  indisponibilidade sobreposta) + direção dos 4 fatores (aceite, carga,
+  desempate determinístico por nome, breakdown explicável).
+- **`test_unavailabilities.py`** (5): criação, **repetição semanal** gera N
+  instâncias, validação de janela/passado, posse na exclusão.
+- **`test_api_shift_actions.py`** (6): cancel (supersede + audit + escopo de
+  hospital), expand-pool (novo batch excluindo já ofertados, exige
+  needs_attention), listar ofertas, guard de papel.
+- **`test_api_doctor_mgmt.py`** (6): PATCH, deactivate/activate (soft-delete
+  via afiliação), stats, guard de papel.
+- **`test_api_me_profile.py`** (4): perfil enriquecido, médico edita
+  nome mas NÃO especialidades, CRUD de indisponibilidades próprias.
+
+- **🐛 Bug real pego pelos testes**: `func.avg()` do Postgres devolve
+  `Decimal`. No `ranking._score_response` isso causava `TypeError: Decimal *
+  float` → **`ranked_doctors` (caminho default de oferta) crashava para
+  qualquer médico com histórico de resposta**. O mesmo `Decimal` quebraria a
+  serialização de `GET /doctors/:id/stats` (jsonify não serializa Decimal).
+  Corrigido coagindo pra `float` na origem (`ranking._offer_stats_bulk` e
+  `doctors.doctor_stats`), com testes de regressão nos dois caminhos.
+- Limpezas: docstring de `offers.py` dizia "offer→shift" (a ordem real é
+  shift→offer); `select` morto em `update_doctor`.
+
+**Gap conhecido** (candidato a "adicionar mais"): o `breakdown` explicável do
+ranking é calculado a cada oferta/tick e **descartado** — nenhum endpoint o
+expõe. O valor do bônus Tier 1 (PLANO §13) é mostrar o *motivo* do ranking na
+tela de detalhe; falta o endpoint + a UI.
 
 ### Dia 6 — Endpoints faltantes + fixes + features frontend + qualidade (2026-05-25)
 
