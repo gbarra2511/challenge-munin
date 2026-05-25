@@ -2,18 +2,7 @@
 // fundo soft + texto --color-ink legível + ponto/ícone na cor de status
 // (neon onde for o caso). Cor NUNCA carrega significado sozinha — sempre há
 // glyph + label (acessibilidade + daltonismo). O ponto `offering` pulsa.
-
-const MAP: Record<
-  string,
-  { label: string; glyph: string; pulse?: boolean; strike?: boolean }
-> = {
-  open: { label: "Aberto", glyph: "○" },
-  offering: { label: "Em oferta", glyph: "●", pulse: true },
-  accepted: { label: "Preenchido", glyph: "✓" },
-  confirmed: { label: "Confirmado", glyph: "✓✓" },
-  needs_attention: { label: "Em risco", glyph: "▲" },
-  cancelled: { label: "Cancelado", glyph: "⊘", strike: true },
-};
+import { STATUS_META, statusKey } from "@/lib/status";
 
 export function StatusPill({
   status,
@@ -22,8 +11,8 @@ export function StatusPill({
   status: string;
   className?: string;
 }) {
-  const s = MAP[status] ?? { label: status, glyph: "•" };
-  const key = status.replace(/_/g, "-"); // needs_attention -> needs-attention
+  const s = STATUS_META[status] ?? { label: status, glyph: "•" };
+  const key = statusKey(status);
   return (
     <span
       className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-sm font-medium text-ink ${className}`}
