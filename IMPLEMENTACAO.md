@@ -277,9 +277,12 @@ Pronta pra ser usada pelos endpoints `/auth/login` e
   e sem secrets, gerando emails de "tick failed" a cada 5 min
 
 ### 6. Seed + README (Dia 6-7)
-- [ ] `POST /admin/seed`: 2 hospitais, 2 coordenadoras, 30 médicos
-  (1–2 specialties cada, ~25% afiliados a ambos), 12 plantões, algumas
-  indisponibilidades. **Não recria specialties** — vem da migration.
+- [x] `POST /admin/seed` (guard `ADMIN_SECRET`) ✅ 2026-05-24 — idempotente
+  (TRUNCATE + recria; preserva specialties). 2 hospitais, coordenadora +
+  30 médicos (1–2 specialties, afiliações variadas A/B), 10 plantões em
+  estados reais (open/offering/accepted/needs_attention). Usa os serviços
+  reais (`open_offers`/`accept_offer`) → gera audit events (timeline povoada).
+  Credenciais: `coordenadora@hospital.com` / `medico@hospital.com` (`123456`).
 - [ ] README com link, credenciais, diagramas, decisões, prints/GIF
 
 ### 7. Bônus (Dia 7, se houver tempo)
