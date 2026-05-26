@@ -3,7 +3,7 @@
 > Estado atual da implementação do Mini-WFM e próximos passos.
 > **Atualizar após cada feature grande. Revisar no início de cada sessão.**
 
-Última atualização: 2026-05-26 (Bônus — swap + notificação WhatsApp completos: backend + frontend + e2e verificado)
+Última atualização: 2026-05-26 (WhatsApp real **entregue e verificado** ponta-a-ponta — Twilio sandbox, `delivered`; testes do adapter + `.env` auto-carregado)
 
 ---
 
@@ -11,13 +11,23 @@
 
 **Subir tudo (do repo root):**
 1. `colima start && docker compose up -d` — Postgres `munin-postgres` na :5432.
-2. Backend: `cd backend` →
-   `export DATABASE_URL="postgresql+psycopg://munin:munin@localhost:5432/munin"` →
+2. Backend: `cd backend` → `cp .env.example .env` (preenche o que quiser; a config
+   é **auto-carregada do `.env`** via pydantic-settings — sem `export`) →
    `uv run alembic upgrade head` →
    `FLASK_APP="app:create_app" uv run flask run --port 5000 --host 127.0.0.1`
 3. Seed: `curl -X POST http://127.0.0.1:5000/admin/seed -H "Authorization: Bearer dev-only-change-me-admin"`
 4. Frontend: `cd frontend && npm install && npm run dev` → http://localhost:3000
    (API via `NEXT_PUBLIC_API_URL`, default `http://127.0.0.1:5000` — ver `.env.example`).
+
+**WhatsApp real (Twilio sandbox):** preencher `TWILIO_ACCOUNT_SID/AUTH_TOKEN/WHATSAPP_FROM`
++ `MUNIN_DEMO_PHONE` no `backend/.env` (gitignored). Sem isso → `NullNotifier` (não envia).
+Disparar entrega: ação que notifica (oferta/troca) → `curl -X POST .../jobs/tick`. ⚠️ **Celular BR
+sem o nono dígito** no `MUNIN_DEMO_PHONE` (com o 9 extra → erro Twilio 63015). Verificar com
+`RUN_TWILIO_LIVE=1 uv run pytest tests/test_whatsapp.py -k live`.
+
+**Acesso mobile (iPhone no mesmo Wi-Fi):** porta **5001** pro backend (a 5000 é do AirPlay
+Receiver no macOS, `*:5000` → 403); subir front/back em `0.0.0.0`, apontar `NEXT_PUBLIC_API_URL`
+e `CORS_ORIGINS` pro IP da LAN (`ipconfig getifaddr en0`).
 
 **Credenciais de demo (seed, senha `123456`):**
 - Coordenadora: `coordenadora@hospital.com`
@@ -41,17 +51,41 @@ IPv6/`::1` é do AirPlay Receiver. O frontend já aponta pra `127.0.0.1` via `.e
 | Endpoints faltantes (cancel, expand, offers) | ✅ feito |
 | Frontend (Hallmark + telas) | ✅ feito (Dias 4–6: auth + todas as telas + ações completas) |
 | Qualidade de código + robustez | ✅ feito (CORS, N+1, error boundary, JSON.parse) |
-| Deploy público + seed | ⏳ pendente |
-| Testes obrigatórios (5) | ✅ feito (5/5 + extras — 150/150) |
-| README final | ⏳ pendente |
+| Deploy público + seed | ⏳ pendente ⬅️ **maior gap obrigatório** (pesa em "Produto" da rubrica) |
+| Testes obrigatórios (5) | ✅ feito (5/5 + extras — **160/160**, 1 skip opt-in) |
+| README final | ⏳ pendente ⬅️ **gap obrigatório** |
 | Bônus: swap (backend atômico) | ✅ feito (transferência A→B + concorrência, 28 testes) |
-| Bônus: notificação outbox + WhatsApp (backend) | ✅ feito (outbox idempotente + dispatch + adapter Twilio, 7 testes) |
+| Bônus: notificação outbox + WhatsApp (backend) | ✅ feito + **entrega real verificada** (`delivered` no sandbox; 17 testes: 7 outbox + 10 adapter) |
 | Bônus: telas de swap + sininho de notificação | ✅ feito (agenda, /trocas med+coord, NotificationBell) |
 | Bônus | ⏳ depois do obrigatório |
 
 ---
 
 ## Feito
+
+### WhatsApp real entregue + testes do adapter + `.env` auto-carregado (2026-05-26)
+
+Fecha o bônus de notificação **com entrega real verificada** (antes só rodava via
+NullNotifier). **160 testes (150 → +10)**, ruff limpo.
+
+- **Entrega real confirmada** no sandbox do Twilio, ponta-a-ponta pelo fluxo do app:
+  `seed`/`request_swap` → `jobs/tick` → `dispatch_pending` → Twilio. 3× `offer.created`
+  (→ médico-demo) e 1× `swap.requested` (→ coordenadora) chegaram com status **`delivered`**
+  (confirmado via `messages(sid).fetch().status`, não só o SID que a Twilio devolve).
+- **🐛 Pegadinha do nono dígito (BR):** o WhatsApp identifica celular brasileiro **sem** o 9
+  extra. Enviar com ele (`+5532999872511`) → **erro 63015**; sem (`+553299872511`) → entrega.
+  Documentado no `.env` e na seção "Como rodar".
+- **`config.py`/`seed.py`:** `MUNIN_DEMO_PHONE` virou campo do `Settings` (`munin_demo_phone`),
+  lido do `.env` — antes era `os.environ.get` direto, que o `.env` do pydantic não populava
+  (exigia `export`). Agora o `.env` sozinho resolve.
+- **`.env.example`** estendido (Twilio + `FRONTEND_URL` + `MUNIN_DEMO_PHONE`); `.env` real
+  segue gitignored. Credenciais **nunca** commitadas (sinal de alerta da rubrica evitado).
+- **Testes** `test_whatsapp.py` (10 unit, sem DB/rede): normalização do número (parametrizado),
+  montagem da requisição com `twilio.rest.Client` **mockado**, seleção do adapter por credenciais
+  (`get_notifier` → WhatsApp/Null), e PII fora do log. **+1 teste opt-in** (`RUN_TWILIO_LIVE=1`)
+  que entrega de verdade e checa o status final — verde quando rodado.
+- **Próximo:** os dois gaps obrigatórios — **deploy público** (passo 6) e **README final**
+  (passo 7). É o que falta pra rubrica /35.
 
 ### Frontend do swap + sininho de notificação + e2e verificado (2026-05-26)
 
@@ -525,6 +559,18 @@ Pronta pra ser usada pelos endpoints `/auth/login` e
 ## Próximos passos imediatos
 
 > Estes são os próximos itens em ordem. Ao começar uma sessão, ler daqui.
+
+> 🎯 **Prioridade agora (o que move a nota /35):** todo o **obrigatório de produto/código
+> está ✅** e 4 bônus polidos (ranking, swap, WhatsApp real, audit). Faltam só os **dois
+> entregáveis obrigatórios de fechamento** — sem eles a rubrica "Produto" e "README" ficam
+> capadas:
+> 1. **Deploy público** (passo 6) — front (Vercel) + back (Fly.io/Railway) + DB (Supabase/Neon)
+>    + reativar o cron do tick. É o maior ganho de nota disponível.
+> 2. **README final** (passo 7) — links de prod + credenciais no topo, diagrama de arquitetura
+>    (Mermaid), state machine, trade-offs, "o que faria com +1 semana", prints/GIF. O `README.md`
+>    atual ainda é o **enunciado** do desafio; precisa virar o README da submissão.
+>
+> Bônus AI (Mini-Luis / copiloto, passo 8) só depois desses dois.
 
 ### 1. Auth + CRUD (Dia 2) ✅ 2026-05-24
 - [x] Hashing de senha com bcrypt em `app/infra/hashing.py` ✅ 2026-05-23
