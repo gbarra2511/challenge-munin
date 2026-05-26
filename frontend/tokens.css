@@ -47,8 +47,8 @@
 
   /* ---- Status do domínio (fg/ponto + soft de fundo) --------------------- */
   /* fg = cor do PONTO/ícone (neon onde marcado). Texto da pill é ink.       */
-  --status-open:               oklch(52% 0.04 258);      /* slate-azul: aguardando */
-  --status-open-soft:          oklch(93% 0.02 258);
+  --status-open:               oklch(55% 0.11 256);      /* azul-slate nítido: não ofertado (legível, não placeholder) */
+  --status-open-soft:          oklch(92% 0.05 256);
   --status-offering:           var(--color-accent);       /* índigo: ao vivo */
   --status-offering-soft:      var(--color-accent-soft);
   --status-accepted:           oklch(87.4% 0.285 141);    /* #48FF00 lime NEON */
@@ -159,8 +159,8 @@
   --color-accent-2-strong: oklch(64% 0.22 293);
   --color-accent-2-soft:   oklch(30% 0.10 293);
 
-  --status-open:            oklch(70% 0.05 258);
-  --status-open-soft:       oklch(26% 0.03 258);
+  --status-open:            oklch(72% 0.12 256);
+  --status-open-soft:       oklch(28% 0.06 256);
   --status-accepted:        oklch(87% 0.27 141);
   --status-accepted-soft:   oklch(28% 0.10 138);
   --status-needs-attention: oklch(70% 0.21 38);
