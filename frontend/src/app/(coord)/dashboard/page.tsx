@@ -87,11 +87,13 @@ export default function DashboardPage() {
         return t >= +day && t < +next;
       });
       const byStatus: Record<string, number> = {};
+      let riskCount = 0;
       for (const s of inDay) {
         byStatus[s.status] = (byStatus[s.status] ?? 0) + 1;
         present.add(s.status);
+        if (isAtRisk(s)) riskCount += 1;
       }
-      return { day, total: inDay.length, byStatus };
+      return { day, total: inDay.length, byStatus, riskCount };
     });
     const maxTotal = Math.max(1, ...days.map((d) => d.total));
     const legend = BAR_STATUSES.filter((s) => present.has(s));
@@ -134,7 +136,11 @@ export default function DashboardPage() {
           {/* KPIs — glyph distinto por status (○ ● ✓ ▲), risco destacado */}
           <section className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
             {KPIS.map((k) => {
-              const count = view.counts[k.key];
+              // "Em risco" usa a regra ampla (mesma da lista): needs_attention
+              // OU aberto/em oferta começando em <12h — "em risco de buraco"
+              // (README). Os demais KPIs contam pelo status literal.
+              const count =
+                k.key === "needs_attention" ? view.risk.length : view.counts[k.key];
               const alert = k.key === "needs_attention" && count > 0;
               return (
                 <Card
@@ -189,12 +195,20 @@ export default function DashboardPage() {
                     {statusLabel(s)}
                   </span>
                 ))}
+                {view.risk.length > 0 && (
+                  <span className="flex items-center gap-1 text-xs text-muted">
+                    <span style={{ color: "var(--status-needs-attention)" }}>
+                      ▲
+                    </span>
+                    em risco
+                  </span>
+                )}
               </div>
             </div>
 
             {/* Colunas: altura = carga do dia, relativa ao pico da semana. */}
             <div className="mt-6 flex items-stretch gap-1.5 sm:gap-2.5">
-              {view.days.map(({ day, total, byStatus }, i) => {
+              {view.days.map(({ day, total, byStatus, riskCount }, i) => {
                 const today = i === 0;
                 const heightPct = view.maxTotal
                   ? (total / view.maxTotal) * 100
@@ -205,14 +219,26 @@ export default function DashboardPage() {
 
                 return (
                   <div key={i} className="flex flex-1 flex-col items-center">
-                    {/* total acima da coluna */}
-                    <span
-                      className={`font-data mb-1.5 text-xs tabular-nums ${
-                        total ? "font-semibold text-ink" : "text-faint"
-                      }`}
-                    >
-                      {total || "—"}
-                    </span>
+                    {/* total acima da coluna; ▲ laranja sinaliza risco no dia */}
+                    <div className="mb-1.5 flex items-center justify-center gap-1">
+                      {riskCount > 0 && (
+                        <span
+                          aria-hidden
+                          title={`${riskCount} em risco`}
+                          className="text-[10px] leading-none"
+                          style={{ color: "var(--status-needs-attention)" }}
+                        >
+                          ▲
+                        </span>
+                      )}
+                      <span
+                        className={`font-data text-xs tabular-nums ${
+                          total ? "font-semibold text-ink" : "text-faint"
+                        }`}
+                      >
+                        {total || "—"}
+                      </span>
+                    </div>
 
                     {/* área da coluna (altura fixa) com baseline */}
                     <div
