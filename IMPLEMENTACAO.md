@@ -3,7 +3,7 @@
 > Estado atual da implementação do Mini-WFM e próximos passos.
 > **Atualizar após cada feature grande. Revisar no início de cada sessão.**
 
-Última atualização: 2026-05-26 (Dia 7 — audit UI/UX + override do 1º lote no ranking)
+Última atualização: 2026-05-26 (Dia 7 — audit UI/UX, ranking tier/override/preview, dashboard de 7 dias)
 
 ---
 
@@ -49,6 +49,26 @@ IPv6/`::1` é do AirPlay Receiver. O frontend já aponta pra `127.0.0.1` via `.e
 ---
 
 ## Feito
+
+### Dashboard — gráfico de 7 dias redesenhado + "em risco" consistente (2026-05-26)
+
+Iteração de UX no dashboard (só frontend). `tsc`/`eslint` limpos.
+
+- **Gráfico "Próximos 7 dias" → colunas verticais empilhadas.** As barras
+  horizontais não codificavam o total (toda linha enchia a largura → 1 plantão
+  parecia 3; `maxTotal` era calculado e ignorado). Agora a **altura = carga do
+  dia** relativa ao pico da semana, segmentos por status, total acima, "Hoje" em
+  accent. (commit `02c35c7`)
+- **`open` em azul-slate nítido.** O slate de "não ofertado" era apagado demais
+  (chroma 0.04) e lia como placeholder — os abertos "sumiam" no gráfico. Subido
+  pra `oklch(55% 0.11 256)` (+ dark); vale p/ gráfico, pills e calendário.
+  (commit `83bef0e`)
+- **"Em risco" consistente (KPI = lista = gráfico).** O KPI contava só
+  `needs_attention` (0) enquanto a lista usava a regra ampla (`isAtRisk`:
+  needs_attention OU aberto/em oferta a <12h) e mostrava 2. KPI passou a usar
+  `view.risk` (bate com a lista e com "em risco de buraco" do README); gráfico
+  ganhou marcador ▲ laranja (overlay, sem contagem dupla) + legenda. (commit
+  `4e74962`)
 
 ### Tier de especialidade no ranking — fallback anti-buraco (2026-05-26)
 
