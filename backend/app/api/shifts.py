@@ -8,7 +8,7 @@ from flask import Blueprint, current_app, jsonify, request
 from sqlalchemy import select
 
 from app.api.errors import NotFound
-from app.api.schemas import OfferCreateIn, ShiftCreateIn
+from app.api.schemas import OfferCreateIn, RankingPreviewIn, ShiftCreateIn
 from app.api.security import current_account_id, current_hospital_id, require_role
 from app.infra.db import get_session
 from app.models import AuditEvent, Shift
@@ -16,6 +16,7 @@ from app.services.offers import open_offers
 from app.services.shift_actions import (
     cancel_shift,
     expand_pool,
+    get_ranking_preview,
     get_shift_offers,
     get_shift_ranking,
 )
@@ -70,6 +71,24 @@ def create():  # type: ignore[no-untyped-def]
         },
     )
     return jsonify({"shift": shift_view(shift)}), 201
+
+
+@bp.post("/ranking-preview")
+@require_role("coordenador")
+def ranking_preview():  # type: ignore[no-untyped-def]
+    """Dry-run do ranking na criação: quem seria ofertado p/ (especialidade,
+    janela) sem criar plantão. Rota estática — não colide com /<uuid:shift_id>."""
+    body = RankingPreviewIn.model_validate(request.get_json(force=True, silent=True) or {})
+    session = get_session()
+    return jsonify(
+        get_ranking_preview(
+            session,
+            hospital_id=current_hospital_id(),
+            specialty_id=body.specialty_id,
+            starts_at=body.starts_at,
+            ends_at=body.ends_at,
+        )
+    )
 
 
 @bp.get("/<uuid:shift_id>")

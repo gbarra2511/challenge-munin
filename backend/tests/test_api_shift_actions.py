@@ -6,9 +6,9 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 
-from app.models import AuditEvent, Hospital, ShiftOffer
+from app.models import AuditEvent, Hospital, Shift, ShiftOffer
 from tests.conftest import auth_header, login, seed_doctor, seed_shift
 
 FAR = datetime(2026, 9, 1, 8, 0, tzinfo=UTC)
@@ -203,3 +203,64 @@ def test_shift_actions_require_coordinator(client, session, doctor_account, hosp
     assert (
         client.post(f"/shifts/{shift.id}/cancel", headers=auth_header(token)).status_code == 403
     )
+
+
+def test_ranking_preview_lists_eligible_without_creating_shift(
+    client, session, coordinator, hospital
+) -> None:
+    """Preview na criação: ranqueia elegíveis p/ (especialidade, janela) sem
+    persistir plantão. `already_offered` é sempre False (não há ofertas)."""
+    doc = seed_doctor(
+        session,
+        name="Preview Doc",
+        email="prev@t.test",
+        specialty_ids=[1],
+        hospital_ids=[hospital.id],
+    )
+    token = _coord(client)
+    before = session.scalar(select(func.count()).select_from(Shift))
+
+    resp = client.post(
+        "/shifts/ranking-preview",
+        headers=auth_header(token),
+        json={
+            "specialty_id": 1,
+            "starts_at": FAR.isoformat(),
+            "ends_at": FAR_END.isoformat(),
+        },
+    )
+    assert resp.status_code == 200, resp.get_json()
+    body = resp.get_json()
+    assert str(doc.id) in [r["doctor"]["id"] for r in body["ranking"]]
+    assert body["eligible_count"] >= 1
+    assert all(r["already_offered"] is False for r in body["ranking"])
+    # dry-run: nenhum plantão foi criado.
+    assert session.scalar(select(func.count()).select_from(Shift)) == before
+
+
+def test_ranking_preview_rejects_bad_window(client, coordinator, hospital) -> None:
+    token = _coord(client)
+    resp = client.post(
+        "/shifts/ranking-preview",
+        headers=auth_header(token),
+        json={
+            "specialty_id": 1,
+            "starts_at": FAR.isoformat(),
+            "ends_at": FAR.isoformat(),  # == starts → inválido
+        },
+    )
+    assert resp.status_code == 422, resp.get_json()
+
+
+def test_ranking_preview_requires_coordinator(client, doctor_account) -> None:
+    token = login(client, "medico@central.test", "senha-medico")
+    resp = client.post(
+        "/shifts/ranking-preview",
+        headers=auth_header(token),
+        json={
+            "specialty_id": 1,
+            "starts_at": FAR.isoformat(),
+            "ends_at": FAR_END.isoformat(),
+        },
+    )
+    assert resp.status_code == 403

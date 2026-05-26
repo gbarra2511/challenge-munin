@@ -17,7 +17,7 @@ from app.domain import shift as shift_sm
 from app.domain.shift import ShiftStatus
 from app.models import Doctor, Shift, ShiftAssignment, ShiftOffer
 from app.services.audit import record_event
-from app.services.ranking import eligible_doctors, ranked_doctors
+from app.services.ranking import ranked_doctors
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -94,7 +94,10 @@ def expand_pool(
     already = set(
         session.scalars(select(ShiftOffer.doctor_id).where(ShiftOffer.shift_id == shift.id))
     )
-    candidates = eligible_doctors(session, shift, exclude_doctor_ids=already)[: shift.batch_size]
+    # ranked_doctors (não eligible_doctors): quando os especialistas já se
+    # esgotaram, o ampliar pool alcança o tier de fallback (não-especialistas).
+    ranked = ranked_doctors(session, shift, exclude_doctor_ids=already)
+    candidates = [r.doctor for r in ranked[: shift.batch_size]]
     if not candidates:
         raise UnprocessableEntity("no more eligible doctors available")
 
@@ -140,10 +143,16 @@ def get_shift_ranking(
         session.scalars(select(ShiftOffer.doctor_id).where(ShiftOffer.shift_id == shift_id))
     )
     ranked = ranked_doctors(session, shift)
+    return _serialize_ranked(ranked[:limit], already)
+
+
+def _serialize_ranked(ranked: list[Any], already: set[UUID]) -> list[dict[str, Any]]:
+    """Serializa RankedDoctor → dict (compartilhado por ranking e preview)."""
     return [
         {
             "doctor": {"id": str(r.doctor.id), "name": r.doctor.name},
             "score": r.score,
+            "is_specialist": r.is_specialist,
             "already_offered": r.doctor.id in already,
             "breakdown": {
                 "acceptance_rate": r.breakdown.acceptance_rate,
@@ -158,8 +167,34 @@ def get_shift_ranking(
                 },
             },
         }
-        for r in ranked[:limit]
+        for r in ranked
     ]
+
+
+def get_ranking_preview(
+    session: Session,
+    *,
+    hospital_id: UUID,
+    specialty_id: int,
+    starts_at: datetime,
+    ends_at: datetime,
+    limit: int = 10,
+) -> dict[str, Any]:
+    """Ranking dry-run: prevê quem seria ofertado ANTES de o plantão existir,
+    pra a coordenadora decidir já na criação. Reusa `ranked_doctors` com um
+    `Shift` transiente (nunca persistido — não é adicionado à sessão).
+    `already_offered` é sempre False (ainda não há ofertas)."""
+    transient = Shift(
+        hospital_id=hospital_id,
+        specialty_id=specialty_id,
+        starts_at=starts_at,
+        ends_at=ends_at,
+    )
+    ranked = ranked_doctors(session, transient)
+    return {
+        "ranking": _serialize_ranked(ranked[:limit], already=set()),
+        "eligible_count": len(ranked),
+    }
 
 
 def get_shift_offers(

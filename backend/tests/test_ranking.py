@@ -177,3 +177,39 @@ def test_ranking_breakdown_is_explainable(session, hospital) -> None:
     assert 0 <= ranked[0].score <= 100
     for component in (b.score_acceptance, b.score_recency, b.score_load, b.score_response):
         assert 0 <= component <= 100
+
+
+# --- tier: especialista primeiro, não-especialista como fallback ------------
+
+
+def test_eligible_doctors_nonspecialist_tier(session, hospital) -> None:
+    """`specialty_match=False` traz só os de FORA da especialidade — o tier de
+    fallback que `ranked_doctors` usa pra não deixar buraco."""
+    _med(session, hospital, "Spec", "s@t.test", specialties=[1])
+    _med(session, hospital, "NonSpec", "n@t.test", specialties=[2])
+    shift = _shift(session, hospital, specialty_id=1)
+
+    assert {d.name for d in eligible_doctors(session, shift)} == {"Spec"}
+    assert {
+        d.name for d in eligible_doctors(session, shift, specialty_match=False)
+    } == {"NonSpec"}
+
+
+def test_ranking_specialists_rank_before_nonspecialists(session, hospital) -> None:
+    """Tier vence o score: um não-especialista com histórico ótimo ainda fica
+    abaixo de um especialista neutro — mas ENTRA (fallback anti-buraco)."""
+    shift = _shift(session, hospital, specialty_id=1)
+    _med(session, hospital, "Especialista", "spec@t.test", specialties=[1])
+    nonspec = _med(session, hospital, "Generalista", "gen@t.test", specialties=[2])
+    _add_offers(session, shift, nonspec, status="accepted", count=10, start_batch=1, resp_min=1)
+
+    ranked = ranked_doctors(session, shift, now=NOW)
+    by_name = {r.doctor.name: r for r in ranked}
+
+    # fallback incluído no ranking
+    assert {"Especialista", "Generalista"} <= set(by_name)
+    # especialista sempre na frente, apesar do score menor
+    assert ranked[0].doctor.name == "Especialista"
+    assert by_name["Especialista"].is_specialist is True
+    assert by_name["Generalista"].is_specialist is False
+    assert by_name["Generalista"].score > by_name["Especialista"].score

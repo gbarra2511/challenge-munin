@@ -68,6 +68,7 @@ class RankedDoctor:
     doctor: Doctor
     score: float = NEUTRAL_SCORE
     breakdown: RankingBreakdown = field(default_factory=RankingBreakdown)
+    is_specialist: bool = True  # False = tier de fallback (fora da especialidade)
 
 
 # --- filtro base (inalterado) ---
@@ -78,24 +79,35 @@ def eligible_doctors(
     shift: Shift,
     *,
     exclude_doctor_ids: Iterable[UUID] = (),
+    specialty_match: bool = True,
 ) -> list[Doctor]:
+    """Médicos afiliados (ativos) ao hospital e livres na janela do plantão.
+    `specialty_match=True` (padrão) → só os DA especialidade do plantão.
+    `False` → só os de FORA dela (tier de fallback do ranking, pra não deixar
+    buraco quando não há especialista disponível)."""
     overlaps = func.tstzrange(DoctorUnavailability.starts_at, DoctorUnavailability.ends_at).op(
         "&&"
     )(func.tstzrange(shift.starts_at, shift.ends_at))
     has_conflict = exists().where(DoctorUnavailability.doctor_id == Doctor.id).where(overlaps)
+    # EXISTS (não JOIN) pra a especialidade: serve tanto pra match quanto pra
+    # negação (~) sem duplicar linhas de médicos multi-especialidade.
+    has_specialty = (
+        exists()
+        .where(DoctorSpecialty.doctor_id == Doctor.id)
+        .where(DoctorSpecialty.specialty_id == shift.specialty_id)
+    )
 
     stmt = (
         select(Doctor)
-        .join(DoctorSpecialty, DoctorSpecialty.doctor_id == Doctor.id)
         .join(
             DoctorHospitalAffiliation,
             (DoctorHospitalAffiliation.doctor_id == Doctor.id)
             & (DoctorHospitalAffiliation.status == "active"),
         )
         .where(
-            DoctorSpecialty.specialty_id == shift.specialty_id,
             DoctorHospitalAffiliation.hospital_id == shift.hospital_id,
             ~has_conflict,
+            has_specialty if specialty_match else ~has_specialty,
         )
         .order_by(Doctor.name, Doctor.id)
     )
@@ -242,16 +254,25 @@ def ranked_doctors(
     exclude_doctor_ids: Iterable[UUID] = (),
     now: datetime | None = None,
 ) -> list[RankedDoctor]:
-    """Retorna médicos elegíveis ordenados por score (desc) com breakdown."""
+    """Médicos ranqueados por tier (especialista primeiro), depois score desc,
+    com breakdown. Tier 2 = não-especialistas afiliados e disponíveis — fallback
+    anti-buraco que cai naturalmente nos lotes seguintes do pipeline."""
     from datetime import UTC
     from datetime import datetime as dt
 
     now = now or dt.now(UTC)
 
-    doctors = eligible_doctors(session, shift, exclude_doctor_ids=exclude_doctor_ids)
+    specialists = eligible_doctors(
+        session, shift, exclude_doctor_ids=exclude_doctor_ids, specialty_match=True
+    )
+    non_specialists = eligible_doctors(
+        session, shift, exclude_doctor_ids=exclude_doctor_ids, specialty_match=False
+    )
+    doctors = specialists + non_specialists
     if not doctors:
         return []
 
+    specialist_ids = {d.id for d in specialists}
     doctor_ids = [d.id for d in doctors]
 
     # 2 queries bulk
@@ -311,8 +332,15 @@ def ranked_doctors(
             score_response=round(s_resp, 1),
         )
 
-        ranked.append(RankedDoctor(doctor=doctor, score=round(score, 1), breakdown=breakdown))
+        ranked.append(
+            RankedDoctor(
+                doctor=doctor,
+                score=round(score, 1),
+                breakdown=breakdown,
+                is_specialist=doctor.id in specialist_ids,
+            )
+        )
 
-    # Ordena: score desc, desempate por nome (determinístico)
-    ranked.sort(key=lambda r: (-r.score, r.doctor.name, str(r.doctor.id)))
+    # Ordena: tier (especialista antes), score desc, desempate por nome.
+    ranked.sort(key=lambda r: (not r.is_specialist, -r.score, r.doctor.name, str(r.doctor.id)))
     return ranked

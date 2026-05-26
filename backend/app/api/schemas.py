@@ -56,3 +56,29 @@ class ShiftCreateIn(BaseModel):
         if starts is not None and v <= starts:
             raise ValueError("ends_at must be after starts_at")
         return v
+
+
+class RankingPreviewIn(BaseModel):
+    """Dry-run do ranking ANTES de o plantão existir (preview na criação).
+    Só precisa do que define elegibilidade: especialidade + janela."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    specialty_id: int
+    starts_at: datetime
+    ends_at: datetime
+
+    @field_validator("starts_at", "ends_at")
+    @classmethod
+    def _must_be_tz_aware(cls, v: datetime) -> datetime:
+        if v.tzinfo is None:
+            raise ValueError("datetime must be timezone-aware (ISO 8601 with offset)")
+        return v
+
+    @field_validator("ends_at")
+    @classmethod
+    def _ends_after_starts(cls, v: datetime, info) -> datetime:  # type: ignore[no-untyped-def]
+        starts = info.data.get("starts_at")
+        if starts is not None and v <= starts:
+            raise ValueError("ends_at must be after starts_at")
+        return v
