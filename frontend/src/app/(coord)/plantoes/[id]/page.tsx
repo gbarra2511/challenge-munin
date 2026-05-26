@@ -17,6 +17,7 @@ import { statusColor, statusLabel } from "@/lib/status";
 import { type AuditEvent, describeEvent } from "@/lib/timeline";
 import type { Shift, ShiftOfferDetail, ShiftRankingEntry } from "@/lib/types";
 import { RankingCard } from "@/components/RankingCard";
+import { RankingHeuristic } from "@/components/RankingHeuristic";
 
 interface DoctorLite {
   id: string;
@@ -27,6 +28,9 @@ export default function PlantaoDetailPage() {
   const { id } = useParams<{ id: string }>();
   const qc = useQueryClient();
   const [cancelOpen, setCancelOpen] = useState(false);
+  // Override manual do 1º lote. null = a coordenadora ainda não mexeu → usamos
+  // a pré-seleção derivada do ranking (sem efeito; ver `effectiveSelected`).
+  const [selected, setSelected] = useState<Set<string> | null>(null);
 
   // ---- Queries ----
   const shiftQ = useQuery({
@@ -61,6 +65,24 @@ export default function PlantaoDetailPage() {
     enabled: rankingActive,
   });
 
+  // Pré-seleção: os `batch_size` melhores do ranking (derivada, não estado).
+  const defaultSelection = useMemo(() => {
+    const s = shiftQ.data?.shift;
+    const ranking = rankingQ.data?.ranking;
+    if (!s || s.status !== "open" || !ranking) return new Set<string>();
+    const n = s.batch_size || 3;
+    return new Set(ranking.slice(0, n).map((r) => r.doctor.id));
+  }, [shiftQ.data, rankingQ.data]);
+  // O que de fato vale: override do usuário, ou a pré-seleção do ranking.
+  const effectiveSelected = selected ?? defaultSelection;
+  const toggleDoctor = (docId: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev ?? defaultSelection);
+      if (next.has(docId)) next.delete(docId);
+      else next.add(docId);
+      return next;
+    });
+
   // ---- Derived ----
   const doctorName = useMemo(() => {
     const map = new Map(
@@ -92,8 +114,12 @@ export default function PlantaoDetailPage() {
   };
 
   const offerMut = useMutation({
-    mutationFn: () =>
-      api<{ shift: Shift }>(`/shifts/${id}/offer`, { method: "POST", body: {} }),
+    mutationFn: (doctorIds: string[]) =>
+      api<{ shift: Shift }>(`/shifts/${id}/offer`, {
+        method: "POST",
+        // doctor_ids = override manual; vazio cairia no ranking automático.
+        body: doctorIds.length ? { doctor_ids: doctorIds } : {},
+      }),
     onSuccess: () => {
       toast.success("Ofertas enviadas para o primeiro lote.");
       invalidateAll();
@@ -214,17 +240,10 @@ export default function PlantaoDetailPage() {
                   </dd>
                 </dl>
 
-                {/* Ações */}
+                {/* Ações (disparar ofertas vive no card de ranking abaixo,
+                    junto da seleção de médicos). */}
+                {(canCancel || shift.status === "needs_attention") && (
                 <div className="mt-5 flex flex-wrap gap-3">
-                  {shift.status === "open" && (
-                    <Button
-                      id="btn-offer"
-                      onClick={() => offerMut.mutate()}
-                      loading={offerMut.isPending}
-                    >
-                      Disparar ofertas agora
-                    </Button>
-                  )}
                   {shift.status === "needs_attention" && (
                     <Button
                       id="btn-expand"
@@ -245,9 +264,10 @@ export default function PlantaoDetailPage() {
                     </Button>
                   )}
                 </div>
+                )}
               </Card>
 
-              {/* Ranking explicável (bônus Tier 1) */}
+              {/* Ranking explicável + override do 1º lote (bônus Tier 1) */}
               {rankingActive && (
                 <Card className="p-5">
                   <div className="flex items-baseline justify-between gap-2">
@@ -255,9 +275,16 @@ export default function PlantaoDetailPage() {
                       Ranking de médicos
                     </h2>
                     <span className="text-xs text-faint">
-                      especialidade · aceite · carga · resposta
+                      aceite · recência · carga · resposta
                     </span>
                   </div>
+                  {shift.status === "open" && (
+                    <p className="mt-1 text-sm text-muted">
+                      Marque quem recebe o 1º lote. Pré-selecionei os{" "}
+                      {shift.batch_size} melhores — ajuste se quiser.
+                    </p>
+                  )}
+                  <RankingHeuristic />
                   {rankingQ.isLoading ? (
                     <Skeleton className="mt-4 h-32 w-full" />
                   ) : rankingQ.isError ? (
@@ -265,8 +292,33 @@ export default function PlantaoDetailPage() {
                       Não foi possível carregar o ranking.
                     </p>
                   ) : (
-                    <RankingCard entries={rankingQ.data?.ranking ?? []} />
+                    <RankingCard
+                      entries={rankingQ.data?.ranking ?? []}
+                      batchSize={shift.batch_size}
+                      selectable={shift.status === "open"}
+                      selectedIds={effectiveSelected}
+                      onToggle={toggleDoctor}
+                    />
                   )}
+                  {shift.status === "open" &&
+                    !rankingQ.isLoading &&
+                    !rankingQ.isError &&
+                    (rankingQ.data?.ranking?.length ?? 0) > 0 && (
+                      <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-rule pt-4">
+                        <Button
+                          id="btn-offer"
+                          onClick={() => offerMut.mutate([...effectiveSelected])}
+                          loading={offerMut.isPending}
+                          disabled={effectiveSelected.size === 0}
+                        >
+                          Disparar ofertas ({effectiveSelected.size})
+                        </Button>
+                        <span className="flex-1 text-xs text-muted">
+                          O 1º lote vai para os médicos marcados. Os demais
+                          entram nos próximos lotes se ninguém aceitar.
+                        </span>
+                      </div>
+                    )}
                 </Card>
               )}
 

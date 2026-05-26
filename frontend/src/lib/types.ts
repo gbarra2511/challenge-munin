@@ -135,8 +135,15 @@ export interface RankingBreakdown {
 export interface ShiftRankingEntry {
   doctor: { id: string; name: string };
   score: number; // 0..100
+  is_specialist: boolean; // false = tier de fallback (fora da especialidade)
   already_offered: boolean;
   breakdown: RankingBreakdown;
+}
+
+// Preview do ranking na criação (POST /shifts/ranking-preview) — dry-run.
+export interface RankingPreviewResult {
+  ranking: ShiftRankingEntry[];
+  eligible_count: number;
 }
 
 // Indisponibilidade

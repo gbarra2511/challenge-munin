@@ -1,18 +1,21 @@
 "use client";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
-import { Button } from "@/components/ui/Button";
+import { RankingCard } from "@/components/RankingCard";
+import { RankingHeuristic } from "@/components/RankingHeuristic";
+import { Button, ButtonLink } from "@/components/ui/Button";
 import { Input, Select } from "@/components/ui/Field";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { ApiError, api } from "@/lib/api";
 import { formatBRL, formatShiftWindow } from "@/lib/format";
 import { SPECIALTIES, specialtyName } from "@/lib/specialties";
-import type { Shift } from "@/lib/types";
+import type { RankingPreviewResult, Shift } from "@/lib/types";
 
 // Campo numérico opcional: "" vira undefined (deixa o backend usar o default).
 const optionalInt = (min: number) =>
@@ -48,9 +51,39 @@ export default function NovoPlantaoPage() {
     register,
     handleSubmit,
     reset,
+    control,
     formState: { errors, isSubmitting },
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } = useForm<FormInput, any, FormOutput>({ resolver: zodResolver(schema) });
+
+  // Preview ao vivo: assim que especialidade + janela são válidas, mostramos
+  // quem seria ofertado (dry-run, sem criar o plantão). Decisão informada
+  // ANTES de comprometer — e a heurística fica visível (README bônus Tier 1).
+  // useWatch (não watch()) — compatível com o React Compiler.
+  const wSpecialty = useWatch({ control, name: "specialty_id" });
+  const wStart = useWatch({ control, name: "starts_at" });
+  const wEnd = useWatch({ control, name: "ends_at" });
+  const wBatch = useWatch({ control, name: "batch_size" });
+  const previewValid =
+    !!wSpecialty &&
+    Number(wSpecialty) > 0 &&
+    !!wStart &&
+    !!wEnd &&
+    new Date(wEnd as string) > new Date(wStart as string);
+  const previewQ = useQuery({
+    queryKey: ["ranking-preview", wSpecialty, wStart, wEnd],
+    queryFn: () =>
+      api<RankingPreviewResult>("/shifts/ranking-preview", {
+        method: "POST",
+        body: {
+          specialty_id: Number(wSpecialty),
+          starts_at: new Date(wStart as string).toISOString(),
+          ends_at: new Date(wEnd as string).toISOString(),
+        },
+      }),
+    enabled: previewValid,
+    staleTime: 30_000,
+  });
 
   const createMut = useMutation({
     mutationFn: (v: FormOutput) =>
@@ -140,12 +173,20 @@ export default function NovoPlantaoPage() {
 
         <div className="mt-5 flex flex-wrap gap-3">
           {created.status === "open" && (
-            <Button
-              onClick={() => offerMut.mutate(created.id)}
-              loading={offerMut.isPending}
-            >
-              Disparar ofertas agora
-            </Button>
+            <>
+              <Button
+                onClick={() => offerMut.mutate(created.id)}
+                loading={offerMut.isPending}
+              >
+                Disparar agora (ranking)
+              </Button>
+              <ButtonLink
+                href={`/plantoes/${created.id}`}
+                variant="secondary"
+              >
+                Escolher médicos do 1º lote
+              </ButtonLink>
+            </>
           )}
           <Button
             variant="secondary"
@@ -263,6 +304,39 @@ export default function NovoPlantaoPage() {
           Criar plantão
         </Button>
       </form>
+
+      {/* Preview do ranking — aparece quando especialidade + janela são válidas */}
+      {previewValid && (
+        <div className="mt-6 rounded-[var(--radius-md)] border border-rule bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)]">
+          <div className="flex items-baseline justify-between gap-2">
+            <h2 className="font-display text-lg font-bold text-ink">
+              Quem seria ofertado
+            </h2>
+            {previewQ.data && (
+              <span className="text-xs text-faint">
+                {previewQ.data.eligible_count} elegíve
+                {previewQ.data.eligible_count === 1 ? "l" : "is"}
+              </span>
+            )}
+          </div>
+          <RankingHeuristic />
+          {previewQ.isLoading ? (
+            <Skeleton className="mt-4 h-32 w-full" />
+          ) : previewQ.isError ? (
+            <p className="mt-3 text-sm text-muted">
+              Não foi possível carregar o preview do ranking.
+            </p>
+          ) : (
+            <RankingCard
+              entries={previewQ.data?.ranking ?? []}
+              batchSize={Number(wBatch) || 3}
+            />
+          )}
+          <p className="mt-3 text-xs text-faint">
+            Prévia — você ajusta e confirma o 1º lote depois de criar o plantão.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
