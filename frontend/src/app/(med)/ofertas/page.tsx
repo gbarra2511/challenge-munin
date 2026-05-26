@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { OfferCard } from "@/components/OfferCard";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Moon } from "@/components/ui/Icon";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { Select } from "@/components/ui/Field";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -118,7 +119,7 @@ export default function OfertasPage() {
 
       {data && filtered.length === 0 && (
         <EmptyState
-          glyph="🌙"
+          glyph={<Moon className="h-8 w-8" />}
           title={
             hospitalFilter !== "all"
               ? "Nenhuma oferta nesse hospital"

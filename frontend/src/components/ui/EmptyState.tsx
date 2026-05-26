@@ -10,7 +10,7 @@ export function EmptyState({
   title: string;
   description?: string;
   action?: ReactNode;
-  glyph?: string;
+  glyph?: ReactNode;
 }) {
   return (
     <div className="flex flex-col items-center justify-center rounded-[var(--radius-md)] border border-dashed border-[var(--color-rule-strong)] bg-[var(--color-surface)] px-6 py-14 text-center">

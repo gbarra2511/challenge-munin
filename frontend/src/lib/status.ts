@@ -13,9 +13,11 @@ export const SHIFT_STATUSES: ShiftStatus[] = [
 
 export const STATUS_META: Record<
   string,
-  { label: string; glyph: string; pulse?: boolean; strike?: boolean }
+  { label: string; glyph: string; pulse?: boolean; strike?: boolean; outline?: boolean }
 > = {
-  open: { label: "Aberto", glyph: "○" },
+  // `outline`: pill tracejada (não preenchida) — sinaliza "ainda não ofertado",
+  // distinto do soft-fill dos estados que já estão em andamento.
+  open: { label: "Não ofertado", glyph: "○", outline: true },
   offering: { label: "Em oferta", glyph: "●", pulse: true },
   accepted: { label: "Preenchido", glyph: "✓" },
   confirmed: { label: "Confirmado", glyph: "✓✓" },

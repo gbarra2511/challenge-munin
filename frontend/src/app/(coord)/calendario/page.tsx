@@ -8,7 +8,7 @@ import { Select } from "@/components/ui/Field";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ApiError, api } from "@/lib/api";
 import { specialtyName, SPECIALTIES } from "@/lib/specialties";
-import { statusColor, statusLabel, statusSoft } from "@/lib/status";
+import { STATUS_META, statusColor, statusLabel, statusSoft } from "@/lib/status";
 import type { Shift } from "@/lib/types";
 import { addDays, sameDay, startOfWeek, weekDays } from "@/lib/week";
 
@@ -25,12 +25,13 @@ function ShiftChip({ shift }: { shift: Shift }) {
       className="flex items-center gap-1.5 rounded-[var(--radius-sm)] px-2 py-1.5 text-left transition-colors hover:brightness-95"
       style={{ background: statusSoft(shift.status) }}
     >
+      {/* Glyph por status (○ ● ✓ ▲ …), não só cor — daltonismo/a11y. */}
       <span
         aria-hidden
         className="shrink-0 text-[0.6rem] leading-none"
         style={{ color: statusColor(shift.status) }}
       >
-        ●
+        {STATUS_META[shift.status]?.glyph ?? "•"}
       </span>
       <span className="font-data shrink-0 text-xs tabular-nums text-ink">
         {timeFmt.format(new Date(shift.starts_at))}

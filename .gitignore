@@ -46,3 +46,6 @@ docker-data/
 # Misc
 .fly/
 fly.toml.local
+
+# Claude Code (skill ui-ux-pro-max + settings locais — não é código do projeto)
+.claude/

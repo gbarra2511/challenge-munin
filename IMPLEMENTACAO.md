@@ -3,7 +3,7 @@
 > Estado atual da implementação do Mini-WFM e próximos passos.
 > **Atualizar após cada feature grande. Revisar no início de cada sessão.**
 
-Última atualização: 2026-05-25 (Dia 6 — endpoints faltantes + fixes + features frontend + qualidade de código)
+Última atualização: 2026-05-26 (Dia 7 — audit UI/UX + override do 1º lote no ranking)
 
 ---
 
@@ -42,13 +42,75 @@ IPv6/`::1` é do AirPlay Receiver. O frontend já aponta pra `127.0.0.1` via `.e
 | Frontend (Hallmark + telas) | ✅ feito (Dias 4–6: auth + todas as telas + ações completas) |
 | Qualidade de código + robustez | ✅ feito (CORS, N+1, error boundary, JSON.parse) |
 | Deploy público + seed | ⏳ pendente |
-| Testes obrigatórios (5) | ✅ feito (5/5 + extras — 109/109) |
+| Testes obrigatórios (5) | ✅ feito (5/5 + extras — 115/115) |
 | README final | ⏳ pendente |
 | Bônus | ⏳ depois do obrigatório |
 
 ---
 
 ## Feito
+
+### Tier de especialidade no ranking — fallback anti-buraco (2026-05-26)
+
+Decisão de produto: especialidade deixou de ser **filtro duro** e virou **tier**.
+Especialistas sempre primeiro (ranqueados pelos 4 fatores); não-especialistas
+afiliados e disponíveis entram como **fallback** — só pra não deixar buraco —
+caindo nos lotes seguintes / no ampliar pool. Backend: **115 testes** (+2), ruff
+limpo.
+
+- **`eligible_doctors(specialty_match: bool)`** — `True` (padrão) = só da
+  especialidade; `False` = só de fora (EXISTS, não JOIN, p/ negar sem duplicar).
+- **`ranked_doctors`** compõe os dois tiers e ordena por
+  `(not is_specialist, -score, nome)` — tier vence o score (um generalista com
+  score 68 fica abaixo de um especialista com 60). `RankedDoctor.is_specialist`.
+- **`expand_pool`** passou a usar `ranked_doctors` (não `eligible_doctors`), pra
+  o ampliar pool alcançar o fallback quando os especialistas se esgotam.
+- **Frontend:** `is_specialist` no tipo; tag âmbar "fora da especialidade" no
+  `RankingCard`; `RankingHeuristic` explica o tier. 2 testes novos (tier vence
+  score; `specialty_match=False` traz só os de fora).
+- **Caveat documentado:** no mundo real, cross-coverage deveria ser por flag de
+  tipo de plantão (CTI/peds não são substituíveis). Fica como evolução.
+
+### Preview do ranking na criação + heurística visível + status "Não ofertado" (2026-05-26)
+
+Continuação do dia. Backend: **113 testes** (110 → +3), ruff limpo.
+
+- **Ranking preview na criação (dry-run).** `POST /shifts/ranking-preview`
+  (coord, escopado ao hospital) ranqueia elegíveis para `(especialidade,
+  janela)` **sem criar plantão** — usa `ranked_doctors` com um `Shift`
+  transiente (não persistido). `shift_actions.get_ranking_preview` +
+  `_serialize_ranked` (extraído de `get_shift_ranking`). 3 testes: lista sem
+  criar shift, valida janela (422), guard de papel (403).
+- **Frontend** `/plantoes/novo`: `useWatch` em especialidade+janela dispara o
+  preview ao vivo (card "Quem seria ofertado" + nº de elegíveis), antes de
+  comprometer a criação.
+- **Heurística visível (README bônus).** `components/RankingHeuristic.tsx` —
+  `<details>` "Como o ranking funciona?" com os 4 fatores ponderados; aparece
+  no preview e no detalhe do plantão.
+- **`open` → "Não ofertado".** `STATUS_META.open` relabel + flag `outline`;
+  `StatusPill` renderiza pill **tracejada sem preenchimento** (distinta do
+  soft-fill dos estados ativos). KPI do dashboard idem.
+
+### Audit UI/UX (hallmark + ui-ux-pro-max) + override do 1º lote (2026-05-26)
+
+Revisão de frontend com a skill `ui-ux-pro-max` e `/hallmark` (projeto é
+gerenciado por `frontend/design.md` — telas seguem o sistema). `tsc`/`eslint`/
+`next build` limpos.
+
+- **Override manual do 1º lote (preview + seleção).** O endpoint `/offer` já
+  aceitava `doctor_ids`; o ranking deixou de ser só leitura. Em `/plantoes/:id`
+  com status `open`, o `RankingCard` ganha checkboxes (pré-marca os
+  `batch_size` melhores), divisores de **Lote 1/2/…** ligando ranking↔pipeline,
+  e CTA "Disparar ofertas (N)" no rodapé. Seleção é derivada em render
+  (`defaultSelection` via `useMemo` + override em estado), sem `useEffect`.
+  `/plantoes/novo` ganha atalho "Escolher médicos do 1º lote" → detalhe.
+- **Explicabilidade do score.** Tooltip no número mostra os 4 sub-scores
+  ponderados (aceite 40% · recência 25% · carga 20% · resposta 15%). Barra
+  tonal: índigo cheio só no líder (accent cirúrgico, design.md §2).
+- **Correções de a11y do audit.** Emoji→SVG (`ui/Icon.tsx`: Moon/Hourglass no
+  empty de ofertas e no countdown); número das barras do dashboard num chip
+  near-white (contraste AA sobre neon); calendário usa glyph por status (não só
+  cor); countdown com `aria-live="off"` (parava de tagarelar 1×/s).
 
 ### Cobertura de testes do código novo + bug de ranking (2026-05-25)
 

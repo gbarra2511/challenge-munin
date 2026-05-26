@@ -1,5 +1,6 @@
 "use client";
 import { Button } from "@/components/ui/Button";
+import { Hourglass } from "@/components/ui/Icon";
 import { StatusPill } from "@/components/ui/StatusPill";
 import {
   formatBRL,
@@ -73,16 +74,16 @@ export function OfferCard({
 
       {/* Countdown ao vivo — o sinal de urgência */}
       <div className="mt-4 flex items-center gap-2 rounded-[var(--radius-sm)] bg-[var(--color-surface-sunk)] px-3 py-2">
-        <span aria-hidden className="text-sm">
-          ⏳
-        </span>
+        <Hourglass className="h-4 w-4 text-muted" />
         <span className="text-xs text-muted">
           {expired ? "Janela encerrada" : "Expira em"}
         </span>
+        {/* aria-live="off": o número muda 1×/s; anunciar a cada segundo é ruído
+            pra leitor de tela. O valor visual + o label "Expira em" bastam. */}
         <span
           className="font-data ml-auto text-lg font-medium tabular-nums"
           style={{ color: countdownColor }}
-          aria-live="polite"
+          aria-live="off"
         >
           {formatCountdown(ms)}
         </span>

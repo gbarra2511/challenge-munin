@@ -41,7 +41,7 @@ function isAtRisk(s: Shift): boolean {
 }
 
 const KPIS = [
-  { key: "open", label: "Abertos" },
+  { key: "open", label: "Não ofertados" },
   { key: "offering", label: "Em oferta" },
   { key: "accepted", label: "Preenchidos" },
   { key: "needs_attention", label: "Em risco" },
@@ -236,6 +236,7 @@ export default function DashboardPage() {
                         BAR_STATUSES.filter((s) => byStatus[s]).map((s) => (
                           <div
                             key={s}
+                            title={`${byStatus[s]} ${statusLabel(s)}`}
                             className="group relative flex h-full items-center justify-center overflow-hidden transition-all"
                             style={{
                               flex: byStatus[s],
@@ -244,7 +245,9 @@ export default function DashboardPage() {
                               borderRadius: "var(--radius-xs)",
                             }}
                           >
-                            <span className="text-[10px] font-bold text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.3)]">
+                            {/* Número num chip near-white: contraste AA sobre
+                                qualquer fill (os neons não servem p/ texto). */}
+                            <span className="font-data rounded-[3px] bg-[var(--color-surface)]/85 px-1 text-[10px] font-bold tabular-nums text-ink">
                               {byStatus[s]}
                             </span>
                             {/* Tooltip on hover */}

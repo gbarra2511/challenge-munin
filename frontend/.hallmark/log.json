@@ -1,5 +1,13 @@
 [
   {
+    "date": "2026-05-26",
+    "macrostructure": "n/a — telas de app (system-managed, design.md §6)",
+    "theme": "custom",
+    "theme_axes": "light / geometric-sans / cool",
+    "enrichment": "none",
+    "brief": "Dia 7 — audit UI/UX (hallmark + ui-ux-pro-max): override do 1º lote no RankingCard (checkbox + divisores de lote + tooltip de sub-scores + barra tonal); preview do ranking na criação (dry-run POST /shifts/ranking-preview) + heurística visível (RankingHeuristic); status open→'Não ofertado' em pill tracejada (outline); emoji→SVG (ui/Icon: Moon/Hourglass); contraste das barras do dashboard (chip near-white); glyph por status no calendário; aria-live=off no countdown; especialidade vira TIER (especialista primeiro, não-especialista como fallback anti-buraco) com tag 'fora da especialidade'"
+  },
+  {
     "date": "2026-05-24",
     "macrostructure": "n/a — telas de app (system-managed, design.md §6)",
     "theme": "custom",

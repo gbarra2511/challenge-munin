@@ -15,8 +15,14 @@ export function StatusPill({
   const key = statusKey(status);
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-sm font-medium text-ink ${className}`}
-      style={{ background: `var(--status-${key}-soft)` }}
+      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-sm font-medium text-ink ${
+        s.outline ? "border border-dashed" : ""
+      } ${className}`}
+      style={
+        s.outline
+          ? { borderColor: `var(--status-${key})`, background: "transparent" }
+          : { background: `var(--status-${key}-soft)` }
+      }
     >
       <span
         aria-hidden
