@@ -31,6 +31,23 @@ class OfferCreateIn(BaseModel):
     doctor_ids: list[UUID] = Field(default_factory=list)
 
 
+class SwapRequestIn(BaseModel):
+    """Médico A pede para passar a assignment a um colega elegível B."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    assignment_id: UUID
+    to_doctor_id: UUID
+
+
+class SwapDecisionIn(BaseModel):
+    """Coordenação aprova/recusa; motivo é repassado ao médico A."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    reason: str | None = Field(default=None, max_length=500)
+
+
 class ShiftCreateIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

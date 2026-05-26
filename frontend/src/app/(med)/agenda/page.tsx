@@ -1,6 +1,9 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
+import Link from "next/link";
 import { useMemo, useState } from "react";
+import { SwapRequestModal } from "@/components/SwapRequestModal";
+import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { Select } from "@/components/ui/Field";
@@ -9,7 +12,7 @@ import { StatusPill } from "@/components/ui/StatusPill";
 import { ApiError, api } from "@/lib/api";
 import { formatBRL, formatShiftWindow } from "@/lib/format";
 import { specialtyName } from "@/lib/specialties";
-import type { Assignment } from "@/lib/types";
+import type { Assignment, SwapRequest } from "@/lib/types";
 
 function groupByDay(items: Assignment[]) {
   const map = new Map<string, Assignment[]>();
@@ -41,11 +44,26 @@ function formatDayLabel(iso: string): string {
 
 export default function AgendaPage() {
   const [hospitalFilter, setHospitalFilter] = useState("all");
+  const [swapFor, setSwapFor] = useState<Assignment | null>(null);
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["assignments"],
     queryFn: () => api<{ assignments: Assignment[] }>("/me/assignments"),
   });
+
+  const { data: swapsData } = useQuery({
+    queryKey: ["my-swaps"],
+    queryFn: () => api<{ swaps: SwapRequest[] }>("/me/swaps"),
+  });
+
+  // Plantões (por shift.id) com troca pendente — para badge no card.
+  const pendingSwapShiftIds = useMemo(() => {
+    const set = new Set<string>();
+    for (const s of swapsData?.swaps ?? []) {
+      if (s.status === "pending") set.add(s.shift.id);
+    }
+    return set;
+  }, [swapsData]);
 
   const hospitals = useMemo(() => {
     const set = new Map<string, string>();
@@ -68,13 +86,21 @@ export default function AgendaPage() {
 
   return (
     <div>
-      <header className="mb-5">
-        <h1 className="font-display text-2xl font-extrabold tracking-[-0.02em]">
-          Agenda
-        </h1>
-        <p className="mt-0.5 text-sm text-muted">
-          Seus plantões aceitos, organizados por dia.
-        </p>
+      <header className="mb-5 flex items-start justify-between gap-3">
+        <div>
+          <h1 className="font-display text-2xl font-extrabold tracking-[-0.02em]">
+            Agenda
+          </h1>
+          <p className="mt-0.5 text-sm text-muted">
+            Seus plantões aceitos, organizados por dia.
+          </p>
+        </div>
+        <Link
+          href="/minhas-trocas"
+          className="shrink-0 rounded-[var(--radius-sm)] border border-rule px-3 py-2 text-sm font-medium text-muted transition-colors hover:bg-[var(--color-surface-2)] hover:text-ink"
+        >
+          Minhas trocas
+        </Link>
       </header>
 
       {isLoading && (
@@ -176,6 +202,26 @@ export default function AgendaPage() {
                               {formatBRL(a.shift.rate_cents)}
                             </span>
                           </div>
+
+                          {a.status === "active" &&
+                            a.shift.status === "accepted" &&
+                            new Date(a.shift.starts_at) > new Date() && (
+                              <div className="mt-3 border-t border-rule pt-3">
+                                {pendingSwapShiftIds.has(a.shift.id) ? (
+                                  <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted">
+                                    <span aria-hidden>⇄</span> Troca pendente de
+                                    aprovação
+                                  </span>
+                                ) : (
+                                  <Button
+                                    variant="secondary"
+                                    onClick={() => setSwapFor(a)}
+                                  >
+                                    <span aria-hidden>⇄</span> Pedir troca
+                                  </Button>
+                                )}
+                              </div>
+                            )}
                         </div>
                       ))}
                     </div>
@@ -185,6 +231,18 @@ export default function AgendaPage() {
             </div>
           )}
         </>
+      )}
+
+      {swapFor && (
+        <SwapRequestModal
+          assignmentId={swapFor.id}
+          shiftLabel={`${specialtyName(swapFor.shift.specialty_id)} · ${formatShiftWindow(
+            swapFor.shift.starts_at,
+            swapFor.shift.ends_at,
+          )}`}
+          open
+          onClose={() => setSwapFor(null)}
+        />
       )}
     </div>
   );

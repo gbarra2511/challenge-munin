@@ -1,7 +1,8 @@
 name: tick
 
-# Disparador do pipeline de ofertas. Roda a cada 5 minutos chamando o
-# endpoint protegido do backend. Ver PLANO.md §7 para o algoritmo.
+# Disparador do pipeline de ofertas + dreno do outbox de notificação
+# (WhatsApp). Roda a cada 5 minutos chamando o endpoint protegido do backend.
+# Ver PLANO.md §7 (pipeline); o /jobs/tick também faz o dispatch das notificações.
 
 on:
   # Cron desativado até o backend estar deployado e os secrets

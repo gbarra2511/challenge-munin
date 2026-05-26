@@ -20,6 +20,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import func, select, text
 
+from app.infra.config import get_settings
 from app.infra.hashing import hash_password
 from app.models import (
     Account,
@@ -96,7 +97,7 @@ _LAST = [
 
 # Tabela de truncamento: tudo de domínio, exceto `specialties` (vem da migration).
 _TRUNCATE = (
-    "TRUNCATE audit_events, swap_requests, shift_assignments, shift_offers, "
+    "TRUNCATE notifications, audit_events, swap_requests, shift_assignments, shift_offers, "
     "shifts, doctor_unavailabilities, doctor_hospital_affiliations, "
     "doctor_specialties, doctors, accounts, hospitals RESTART IDENTITY CASCADE"
 )
@@ -109,6 +110,10 @@ def _shift_at(now: datetime, *, days: float, hour: int, dur_h: int = 12):
 
 
 def run_seed(session: Session, *, defaults: dict[str, int]) -> dict:
+    # Celular opt-in real do sandbox do WhatsApp (Twilio), lido do .env/ambiente.
+    # Se definido, a coordenadora e o médico-demo recebem notificações nesse número.
+    demo_phone = get_settings().munin_demo_phone
+
     session.execute(text(_TRUNCATE))
     session.commit()
 
@@ -125,7 +130,7 @@ def run_seed(session: Session, *, defaults: dict[str, int]) -> dict:
     doctors: list[Doctor] = []
     links: list = []  # specialties + affiliations + unavailabilities
 
-    # Coordenadora (hospital A)
+    # Coordenadora (hospital A) — telefone p/ receber pedidos de troca no WhatsApp.
     accounts.append(
         Account(
             id=uuid.uuid4(),
@@ -133,6 +138,7 @@ def run_seed(session: Session, *, defaults: dict[str, int]) -> dict:
             password_hash=hash_password(DEMO_PASSWORD),
             role="coordenador",
             hospital_id=hosp_a.id,
+            phone=demo_phone or "+55 11 98888-0000",
         )
     )
 
@@ -153,7 +159,7 @@ def run_seed(session: Session, *, defaults: dict[str, int]) -> dict:
             id=demo_doc_id,
             account_id=demo_acc_id,
             name="Dra. Ana Beatriz Costa",
-            phone="+55 11 90000-0000",
+            phone=demo_phone or "+55 11 90000-0000",
         )
     )
     links += [

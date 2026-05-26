@@ -3,7 +3,7 @@
 > Estado atual da implementação do Mini-WFM e próximos passos.
 > **Atualizar após cada feature grande. Revisar no início de cada sessão.**
 
-Última atualização: 2026-05-26 (Dia 7 — audit UI/UX, ranking tier/override/preview, dashboard de 7 dias)
+Última atualização: 2026-05-26 (Bônus — swap + notificação WhatsApp completos: backend + frontend + e2e verificado)
 
 ---
 
@@ -42,13 +42,101 @@ IPv6/`::1` é do AirPlay Receiver. O frontend já aponta pra `127.0.0.1` via `.e
 | Frontend (Hallmark + telas) | ✅ feito (Dias 4–6: auth + todas as telas + ações completas) |
 | Qualidade de código + robustez | ✅ feito (CORS, N+1, error boundary, JSON.parse) |
 | Deploy público + seed | ⏳ pendente |
-| Testes obrigatórios (5) | ✅ feito (5/5 + extras — 115/115) |
+| Testes obrigatórios (5) | ✅ feito (5/5 + extras — 150/150) |
 | README final | ⏳ pendente |
+| Bônus: swap (backend atômico) | ✅ feito (transferência A→B + concorrência, 28 testes) |
+| Bônus: notificação outbox + WhatsApp (backend) | ✅ feito (outbox idempotente + dispatch + adapter Twilio, 7 testes) |
+| Bônus: telas de swap + sininho de notificação | ✅ feito (agenda, /trocas med+coord, NotificationBell) |
 | Bônus | ⏳ depois do obrigatório |
 
 ---
 
 ## Feito
+
+### Frontend do swap + sininho de notificação + e2e verificado (2026-05-26)
+
+Fecha os dois bônus ponta a ponta. `next build` verde (17 rotas, TS limpo),
+backend 150 testes, fluxo validado contra o stack real.
+
+- **`/agenda`** (médico): botão "Pedir troca" nos plantões aceitos no futuro →
+  `SwapRequestModal` (carrega candidatos ranqueados, escolhe colega, envia);
+  badge "Troca pendente"; link "Minhas trocas".
+- **`/minhas-trocas`** (médico): lista de pedidos com status, alvo e motivo da
+  recusa; cancelar enquanto pendente. (Rota separada de `/trocas` porque route
+  groups não criam segmento — colidiria com a da coord.)
+- **`/trocas`** (coordenação): pendentes em grid; **aprovar/recusar com modal de
+  motivo** (textarea); é o destino do deep link do WhatsApp.
+- **`NotificationBell`** (med + coord): polla `/me/notifications` (20s), badge de
+  não-lidas, dropdown com deep links, marcar lida(s). Nav: aba/link "Trocas".
+- **Tipos/format**: `SwapRequest`/`SwapCandidate`/`NotificationItem` em
+  `types.ts`; `formatRelative` em `format.ts`.
+- **E2E verificado** (stack real + seed): médico pede troca → coord aprova →
+  banco mostra A `swapped_out` + B `active` (1 ativa) + swap `approved`; tick
+  drenou 12 notificações WhatsApp (NullNotifier, sem creds) → todas `sent`; feed
+  do médico mostra "Troca aprovada".
+- **WhatsApp real**: basta definir `TWILIO_ACCOUNT_SID/AUTH_TOKEN/WHATSAPP_FROM`
+  + `MUNIN_DEMO_PHONE` (celular opt-in do sandbox) — sem isso, NullNotifier.
+
+### Notificação real — outbox + dispatch no tick + adapter WhatsApp (Twilio) (2026-05-26)
+
+Segundo pilar do bônus. **150 testes (143 → +7)**, ruff limpo. Oferta de plantão
+e eventos de swap agora notificam por **in-app (feed) + WhatsApp**.
+
+- **`app/services/notifications.py`** — outbox: `enqueue` idempotente
+  (`ON CONFLICT (dedupe_key) DO NOTHING`), `notify_event`/`notify_doctor`/
+  `notify_hospital_coords` (resolvem destinatário por conta), e `dispatch_pending`
+  **claim-then-send**: trava+marca `sending` com `FOR UPDATE SKIP LOCKED` (dois
+  ticks não pegam a mesma linha), commita pra soltar o lock, e SÓ ENTÃO chama o
+  provedor (fora de qualquer lock de banco). At-least-once. `feed`/`mark_read`.
+- **Canal `in_app` nasce `sent`** (lido direto pelo feed); `whatsapp` é entregue
+  pelo dispatch. Telefone (PII) resolvido só no envio (coord → `accounts.phone`,
+  médico → `doctors.phone`), nunca no audit/payload.
+- **Adapter** `app/infra/notifier.py` (`Notifier`/`NullNotifier`/`get_notifier`)
+  + `app/infra/whatsapp.py` (`WhatsAppNotifier`, Twilio, import preguiçoso). Sem
+  credenciais → `NullNotifier` (dev/test não tocam a rede). Dep `twilio` add.
+- **Wiring**: `offers._send_batch` (oferta→médico), `swaps.request_swap`
+  (→coordenação), `approve_swap` (→A e B), `reject_swap` (→A com motivo).
+- **Tick** (`/jobs/tick`) agora roda `run_tick` **e** `dispatch_pending` (reusa
+  o cron; sem worker novo). Config: `FRONTEND_URL` (deep links) + `TWILIO_*`.
+- **Seed**: `accounts.phone` da coordenadora + override `MUNIN_DEMO_PHONE` p/
+  apontar coordenadora e médico-demo ao celular opt-in real do sandbox.
+- **Testes** `test_notifications.py`: enqueue idempotente, feed+mark_read,
+  dispatch via NullNotifier (sent/skipped/idempotente), in_app não-dispatchado,
+  oferta enfileira notificação.
+- **Próximo**: telas (Fase 1.5) — `/agenda` pedir troca, `/trocas` (médico+coord),
+  sininho de notificação; reativar cron no deploy.
+
+### Swap de plantão — backend atômico (handoff aprovado pela coordenação) (2026-05-26)
+
+Primeiro pilar do bônus de troca + notificação real (plano em
+`~/.claude/plans/goofy-moseying-pinwheel.md`). Médico A pede para passar um
+plantão aceito a um colega elegível B; a coordenação aprova/recusa com motivo.
+**143 testes (115 → +28)**, ruff limpo, concorrência 5× sem flaky.
+
+- **Migração 0002** (aditiva): `accounts.phone`; `swap_requests` +
+  `reason`/`decided_by`/`decided_at` + índice **parcial único**
+  `uq_swap_pending_per_assignment` (no máx. 1 pendente por assignment); CHECK de
+  `shift_assignments` estendido com `'swapped_out'`; nova tabela `notifications`
+  (outbox — usada na Fase 2). `app/models.py` espelha tudo (+ classe `Notification`).
+- **`app/domain/swap.py`** — state machine pura (pending → approved/rejected/
+  cancelled), espelhando `domain/shift.py`.
+- **`app/services/swaps.py`** — `approve_swap` espelha a disciplina do
+  `accept_offer`: **shift travado `FOR UPDATE` como ponto único de
+  serialização**, todas as invariantes re-checadas sob o lock, e transferência
+  na ordem `UPDATE A→swapped_out` (Core, executa antes) **depois**
+  `INSERT B active` — respeitando `one_active_assignment_per_shift`. Também:
+  `request_swap`, `reject_swap`, `cancel_swap`, `swap_candidates`, listagens.
+- **🐛 Pego pelos testes** — *stale identity-map*: o peek via `session.get`
+  cacheava o swap como `pending`; o reload `FOR UPDATE` devolvia o objeto antigo
+  e o perdedor da corrida não via `approved` → violava o índice. Corrigido
+  peekando por **colunas** (não ORM), como o `accept_offer` faz.
+- **Endpoints** `app/api/swaps.py` (médico: `POST /swaps`, `/swaps/:id/cancel`;
+  coord: `GET /swaps`, `/swaps/:id/approve|reject`) + `/me/swaps` e
+  `/me/assignments/:id/swap-candidates` no blueprint `me`. Schemas Pydantic.
+- **Testes**: `test_domain_swap.py`, `test_swaps.py` (request/approve/reject/
+  cancel + guards 404/409/422), `test_swap_concurrency.py` (2 threads aprovando
+  → 1 ok / 1 409, A `swapped_out`, 1 ativa, shift `accepted`).
+- **Próximo**: notificação outbox (Fase 2) + WhatsApp (Fase 3) + telas (Fase 1.5).
 
 ### Dashboard — gráfico de 7 dias redesenhado + "em risco" consistente (2026-05-26)
 

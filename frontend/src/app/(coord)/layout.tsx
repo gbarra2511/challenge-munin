@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { NotificationBell } from "@/components/NotificationBell";
 import { useAuth } from "@/lib/auth";
 import { useLogout } from "@/lib/useLogout";
 import { useRequireRole } from "@/lib/useRequireRole";
@@ -9,6 +10,7 @@ const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: "◧" },
   { href: "/calendario", label: "Calendário", icon: "▦" },
   { href: "/plantoes", label: "Plantões", icon: "≣" },
+  { href: "/trocas", label: "Trocas", icon: "⇄" },
   { href: "/medicos", label: "Médicos", icon: "⊕" },
 ];
 
@@ -61,11 +63,14 @@ export default function CoordLayout({
     <div className="min-h-dvh md:pl-[var(--app-sidebar)]">
       {/* Sidebar fixa (md+) */}
       <aside className="fixed inset-y-0 left-0 z-10 hidden w-[var(--app-sidebar)] flex-col border-r border-rule bg-[var(--color-surface)] px-3 py-5 md:flex">
-        <div className="px-3">
-          <span className="font-display text-xl font-extrabold tracking-[-0.02em]">
-            Munin
-          </span>
-          <p className="mt-0.5 text-xs text-faint">Coordenação</p>
+        <div className="flex items-start justify-between gap-2 px-3">
+          <div>
+            <span className="font-display text-xl font-extrabold tracking-[-0.02em]">
+              Munin
+            </span>
+            <p className="mt-0.5 text-xs text-faint">Coordenação</p>
+          </div>
+          <NotificationBell align="start" />
         </div>
 
         <Link
@@ -108,6 +113,7 @@ export default function CoordLayout({
           </span>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
+          <NotificationBell />
           <button
             onClick={doLogout}
             className="h-9 rounded-[var(--radius-sm)] border border-rule px-3 text-sm font-medium text-muted hover:bg-[var(--color-surface-2)] hover:text-ink"

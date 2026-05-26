@@ -60,6 +60,8 @@ class Account(Base):
     email: Mapped[str] = mapped_column(CITEXT, unique=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(Text, nullable=False)
     role: Mapped[str] = mapped_column(Text, nullable=False)
+    # Telefone da coordenação para notificação por WhatsApp (médico usa doctors.phone).
+    phone: Mapped[str | None] = mapped_column(Text)
     hospital_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("hospitals.id")
     )
@@ -237,7 +239,7 @@ class ShiftAssignment(Base):
     __tablename__ = "shift_assignments"
     __table_args__ = (
         CheckConstraint(
-            "status IN ('active', 'cancelled', 'completed')",
+            "status IN ('active', 'cancelled', 'completed', 'swapped_out')",
             name="assignment_status_valid",
         ),
         # A LINHA MAIS IMPORTANTE DO BANCO — defesa em profundidade contra
@@ -274,6 +276,15 @@ class SwapRequest(Base):
             "status IN ('pending', 'approved', 'rejected', 'cancelled')",
             name="swap_status_valid",
         ),
+        # No máximo UM pedido pendente por assignment — torna a corrida de
+        # dois pedidos simultâneos impossível no banco (o serviço também checa).
+        Index(
+            "uq_swap_pending_per_assignment",
+            "from_assignment_id",
+            unique=True,
+            postgresql_where=text("status = 'pending'"),
+        ),
+        Index("ix_swap_status", "status"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -286,9 +297,58 @@ class SwapRequest(Base):
         UUID(as_uuid=True), ForeignKey("doctors.id"), nullable=False
     )
     status: Mapped[str] = mapped_column(Text, nullable=False)
+    # Motivo (sobretudo na recusa) repassado ao médico que pediu a troca.
+    reason: Mapped[str | None] = mapped_column(Text)
+    decided_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("accounts.id")
+    )
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=text("now()"), nullable=False
     )
+
+
+class Notification(Base):
+    """Outbox de notificação. Escrita na mesma transação do evento de domínio
+    (oferta enviada, swap pedido/decidido) e drenada pelo tick — nunca chamamos
+    o provedor externo dentro da transação do banco (evita dual-write).
+
+    `channel='in_app'` é lido direto pelo feed (não precisa envio);
+    `channel='whatsapp'` é entregue pelo dispatch (claim-then-send).
+    `dedupe_key` UNIQUE garante enqueue idempotente.
+    """
+
+    __tablename__ = "notifications"
+    __table_args__ = (
+        CheckConstraint(
+            "channel IN ('in_app', 'whatsapp')",
+            name="notification_channel_valid",
+        ),
+        CheckConstraint(
+            "status IN ('pending', 'sending', 'sent', 'failed', 'skipped')",
+            name="notification_status_valid",
+        ),
+        Index("ix_notifications_dispatch", "channel", "status", "created_at"),
+        Index("ix_notifications_recipient", "recipient_account_id", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    recipient_account_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("accounts.id"), nullable=False
+    )
+    channel: Mapped[str] = mapped_column(Text, nullable=False)
+    template: Mapped[str] = mapped_column(Text, nullable=False)
+    payload: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    status: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'pending'"))
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    last_error: Mapped[str | None] = mapped_column(Text)
+    dedupe_key: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    provider_message_id: Mapped[str | None] = mapped_column(Text)
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()"), nullable=False
+    )
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class AuditEvent(Base):

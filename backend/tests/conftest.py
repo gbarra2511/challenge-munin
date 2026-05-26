@@ -34,7 +34,7 @@ from app.models import (
 
 # Tabelas transacionais (tudo menos specialties, que vem da migração).
 _TRUNCATE_TABLES = (
-    "shift_assignments, shift_offers, swap_requests, audit_events, shifts, "
+    "notifications, shift_assignments, shift_offers, swap_requests, audit_events, shifts, "
     "doctor_unavailabilities, doctor_hospital_affiliations, doctor_specialties, "
     "doctors, accounts, hospitals"
 )

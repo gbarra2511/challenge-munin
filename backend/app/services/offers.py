@@ -24,8 +24,9 @@ from sqlalchemy import select, update
 from app.api.errors import Conflict, Gone, NotFound, UnprocessableEntity
 from app.domain import shift as shift_sm
 from app.domain.shift import ShiftStatus
-from app.models import Doctor, Shift, ShiftAssignment, ShiftOffer
+from app.models import Doctor, Shift, ShiftAssignment, ShiftOffer, Specialty
 from app.services.audit import record_event
+from app.services.notifications import notify_doctor
 from app.services.ranking import ranked_doctors
 
 if TYPE_CHECKING:
@@ -43,6 +44,9 @@ def _send_batch(
     session: Session, shift: Shift, doctors: list[Doctor], *, batch_number: int, now: datetime
 ) -> None:
     window = timedelta(minutes=shift.batch_window_minutes)
+    specialty_name = session.scalar(
+        select(Specialty.name).where(Specialty.id == shift.specialty_id)
+    )
     for doctor in doctors:
         session.add(
             ShiftOffer(
@@ -53,6 +57,22 @@ def _send_batch(
                 sent_at=now,
                 expires_at=now + window,
             )
+        )
+        # Notificação ao médico (in-app + WhatsApp). ref_id = identidade da
+        # oferta (uq_offer_unique_per_batch) → dedupe estável sob tick repetido.
+        notify_doctor(
+            session,
+            doctor_id=doctor.id,
+            template="offer.created",
+            ref_id=f"{shift.id}:{batch_number}:{doctor.id}",
+            title="Nova oferta de plantão",
+            body=(
+                f"{specialty_name or 'Plantão'} · "
+                f"{shift.starts_at:%d/%m %H:%M} · R$ {shift.rate_cents / 100:.0f}. "
+                f"Responda antes de expirar."
+            ),
+            path="/ofertas",
+            now=now,
         )
     record_event(
         session,

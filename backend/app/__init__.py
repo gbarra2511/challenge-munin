@@ -38,6 +38,10 @@ def create_app(
         DEFAULT_BATCH_SIZE=settings.default_batch_size,
         DEFAULT_BATCH_WINDOW_MINUTES=settings.default_batch_window_minutes,
         DEFAULT_ESCALATE_HOURS_BEFORE=settings.default_escalate_hours_before,
+        FRONTEND_URL=settings.frontend_url,
+        TWILIO_ACCOUNT_SID=settings.twilio_account_sid,
+        TWILIO_AUTH_TOKEN=settings.twilio_auth_token,
+        TWILIO_WHATSAPP_FROM=settings.twilio_whatsapp_from,
     )
 
     init_db(app, engine=engine, session_factory=session_factory)
@@ -60,11 +64,13 @@ def _register_blueprints(app: Flask) -> None:
     from app.api.me import bp as me_bp
     from app.api.offers import bp as offers_bp
     from app.api.shifts import bp as shifts_bp
+    from app.api.swaps import bp as swaps_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(doctors_bp)
     app.register_blueprint(shifts_bp)
     app.register_blueprint(offers_bp)
+    app.register_blueprint(swaps_bp)
     app.register_blueprint(me_bp)
     app.register_blueprint(jobs_bp)
     app.register_blueprint(admin_bp)

@@ -146,6 +146,52 @@ export interface RankingPreviewResult {
   eligible_count: number;
 }
 
+// --- Swap (troca de plantão) — espelha services/swaps._serialize_swap ---
+export type SwapStatus = "pending" | "approved" | "rejected" | "cancelled";
+
+export interface SwapRequest {
+  id: string;
+  status: SwapStatus;
+  reason: string | null;
+  created_at: string | null;
+  decided_at: string | null;
+  from_doctor: { id: string; name: string };
+  to_doctor: { id: string; name: string };
+  shift: {
+    id: string;
+    hospital_id: string;
+    hospital_name: string;
+    specialty_id: number;
+    starts_at: string;
+    ends_at: string;
+    rate_cents: number;
+    status: ShiftStatus;
+  };
+}
+
+// Candidato elegível p/ assumir um plantão (GET /me/assignments/:id/swap-candidates)
+export interface SwapCandidate {
+  doctor: { id: string; name: string };
+  score: number;
+  is_specialist: boolean;
+}
+
+// --- Notificação in-app (GET /me/notifications) ---
+export interface NotificationItem {
+  id: string;
+  template: string;
+  title: string | null;
+  body: string | null;
+  path: string | null;
+  read: boolean;
+  created_at: string | null;
+}
+
+export interface NotificationFeed {
+  notifications: NotificationItem[];
+  unread: number;
+}
+
 // Indisponibilidade
 export interface Unavailability {
   id: string;

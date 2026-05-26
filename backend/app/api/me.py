@@ -109,6 +109,56 @@ def assignments():  # type: ignore[no-untyped-def]
     )
 
 
+@bp.get("/notifications")
+@require_role()  # qualquer conta autenticada (médico ou coordenação)
+def notifications_feed():  # type: ignore[no-untyped-def]
+    session = get_session()
+    from app.services.notifications import feed
+
+    return jsonify(feed(session, account_id=current_account_id()))
+
+
+@bp.post("/notifications/read")
+@require_role()
+def notifications_mark_all_read():  # type: ignore[no-untyped-def]
+    session = get_session()
+    from app.services.notifications import mark_read
+
+    mark_read(session, account_id=current_account_id())
+    return "", 204
+
+
+@bp.post("/notifications/<uuid:notification_id>/read")
+@require_role()
+def notifications_mark_read(notification_id):  # type: ignore[no-untyped-def]
+    session = get_session()
+    from app.services.notifications import mark_read
+
+    mark_read(session, account_id=current_account_id(), notification_id=notification_id)
+    return "", 204
+
+
+@bp.get("/swaps")
+@require_role("medico")
+def my_swaps():  # type: ignore[no-untyped-def]
+    session = get_session()
+    doctor = resolve_doctor(session, current_account_id())
+    from app.services.swaps import list_my_swaps
+
+    return jsonify({"swaps": list_my_swaps(session, doctor_id=doctor.id)})
+
+
+@bp.get("/assignments/<uuid:assignment_id>/swap-candidates")
+@require_role("medico")
+def swap_candidates_for_assignment(assignment_id):  # type: ignore[no-untyped-def]
+    session = get_session()
+    doctor = resolve_doctor(session, current_account_id())
+    from app.services.swaps import swap_candidates
+
+    candidates = swap_candidates(session, assignment_id=assignment_id, doctor_id=doctor.id)
+    return jsonify({"candidates": candidates})
+
+
 @bp.get("/profile")
 @require_role("medico")
 def profile():  # type: ignore[no-untyped-def]
