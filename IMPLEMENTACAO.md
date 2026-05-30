@@ -63,6 +63,23 @@ IPv6/`::1` é do AirPlay Receiver. O frontend já aponta pra `127.0.0.1` via `.e
 
 ## Feito
 
+### README de submissão + enunciado em CHALLENGE.md (2026-05-30)
+
+Fecha o **último entregável obrigatório**. `README.md` antigo (enunciado) →
+`CHALLENGE.md` via `git mv`; novo `README.md` de submissão cobrindo cada eixo da
+rubrica /35.
+
+- **Topo:** links de prod + credenciais; **5 prints** (desktop) capturados via
+  Playwright contra o site publicado, em `docs/screenshots/`.
+- **Mermaid:** arquitetura (flowchart Fly/Supabase/Vercel/cron), modelo
+  (erDiagram, 12 tabelas), state machine do plantão.
+- **Concorrência fiel ao código:** lock **shift→offer** (com o porquê do
+  deadlock), índice único parcial como defesa em profundidade, 409/410.
+- Pipeline; outbox+WhatsApp com caveats honestos (sandbox 72h, 9º dígito BR);
+  ranking explicável (4 fatores + tier de especialidade); lista **real** de
+  endpoints; testes (5 obrigatórios + extras); rodar local; deploy; trade-offs;
+  "o que faltou / +1 semana"; bônus implementados. Tudo em pt-BR.
+
 ### Inline-dispatch de notificação + correções de responsividade mobile (2026-05-30)
 
 Dois ajustes pós-deploy, ambos **verificados em prod** (headless 390px + Twilio).
