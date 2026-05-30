@@ -1,0 +1,15 @@
+# Não copiar pra imagem: ambiente local, caches e segredos.
+.venv
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+.ruff_cache
+.coverage
+htmlcov
+.env
+.env.*
+!.env.example
+tests
+README.md
+.python-version

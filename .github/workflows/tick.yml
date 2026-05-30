@@ -5,11 +5,11 @@ name: tick
 # Ver PLANO.md §7 (pipeline); o /jobs/tick também faz o dispatch das notificações.
 
 on:
-  # Cron desativado até o backend estar deployado e os secrets
-  # (API_URL, TICK_SECRET) configurados no repo. Reativar removendo
-  # o comentário abaixo. Por enquanto, rodar manualmente via UI.
-  # schedule:
-  #   - cron: "*/5 * * * *"
+  # Backend deployado (Fly) + secrets API_URL/TICK_SECRET no repo → cron ativo.
+  # Roda a cada 5 min: avança o pipeline de ofertas e drena o outbox de
+  # notificação. Também mantém Fly e Supabase acordados (evita o pause do free).
+  schedule:
+    - cron: "*/5 * * * *"
   workflow_dispatch:
 
 jobs:

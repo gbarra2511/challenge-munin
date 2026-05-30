@@ -1,0 +1,34 @@
+# Fly.io — backend Mini-WFM. Ajuste `app` se o nome já estiver em uso.
+# Região gru = São Paulo (perto dos usuários BR; escolha o Supabase em
+# South America / sa-east-1 pra minimizar latência app↔DB).
+app = "munin-backend"
+primary_region = "gru"
+
+[build]
+
+[deploy]
+  # Roda as migrations numa máquina efêmera ANTES de trocar o release.
+  # Usa o mesmo DATABASE_URL (secret) que o app.
+  release_command = "alembic upgrade head"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  # Scale-to-zero pra custo mínimo. O cron do /jobs/tick (a cada 5 min)
+  # mantém a máquina acordada durante a avaliação; a 1ª request após
+  # ociosidade longa tem cold-start de ~2-3s. Pra zero cold-start, troque
+  # min_machines_running por 1.
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [[http_service.checks]]
+    interval = "15s"
+    timeout = "2s"
+    grace_period = "10s"
+    method = "GET"
+    path = "/health"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"
