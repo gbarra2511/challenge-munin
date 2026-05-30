@@ -13,6 +13,7 @@ entra no payload nem no audit.
 
 from __future__ import annotations
 
+import logging
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
@@ -31,6 +32,8 @@ if TYPE_CHECKING:
 MAX_ATTEMPTS = 5
 _DISPATCH_CHANNEL = "whatsapp"
 DEFAULT_CHANNELS = ("in_app", "whatsapp")
+
+logger = logging.getLogger(__name__)
 
 
 def _now(now: datetime | None) -> datetime:
@@ -138,9 +141,7 @@ def notify_hospital_coords(
 ) -> None:
     """Notifica todas as coordenações do hospital."""
     coord_ids = session.scalars(
-        select(Account.id).where(
-            Account.role == "coordenador", Account.hospital_id == hospital_id
-        )
+        select(Account.id).where(Account.role == "coordenador", Account.hospital_id == hospital_id)
     ).all()
     for account_id in coord_ids:
         notify_event(
@@ -237,6 +238,30 @@ def dispatch_pending(
         session.commit()
 
     return stats
+
+
+def dispatch_pending_safe(
+    session: Session,
+    *,
+    notifier: Notifier | None = None,
+    link_base: str = "",
+    limit: int = 50,
+    now: datetime | None = None,
+) -> dict[str, int] | None:
+    """Best-effort: roda `dispatch_pending` sem deixar erro vazar. Para chamar
+    INLINE logo após uma ação que enfileira notificação — dá entrega quase-
+    instantânea sem abrir mão do outbox: o cron do `/jobs/tick` continua sendo o
+    fallback durável e idempotente (SKIP LOCKED evita envio duplo se os dois
+    coincidirem). Uma falha aqui (rede/DB) nunca quebra a request: a notificação
+    fica `pending` e o tick reenvia."""
+    try:
+        return dispatch_pending(
+            session, notifier=notifier, link_base=link_base, limit=limit, now=now
+        )
+    except Exception:
+        logger.exception("inline dispatch falhou; o tick fará o fallback")
+        session.rollback()
+        return None
 
 
 # --- feed in-app ------------------------------------------------------------

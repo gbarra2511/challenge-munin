@@ -8,6 +8,7 @@ from flask import Blueprint, current_app, jsonify, request
 from sqlalchemy import select
 
 from app.api.errors import NotFound
+from app.api.notify import flush_notifications
 from app.api.schemas import OfferCreateIn, RankingPreviewIn, ShiftCreateIn
 from app.api.security import current_account_id, current_hospital_id, require_role
 from app.infra.db import get_session
@@ -106,6 +107,7 @@ def offer(shift_id):  # type: ignore[no-untyped-def]
     session = get_session()
     shift = _load_own_shift(session, shift_id)
     shift = open_offers(session, shift, doctor_ids=body.doctor_ids or None)
+    flush_notifications(session)  # entrega as ofertas do batch na hora (cron = fallback)
     return jsonify({"shift": shift_view(shift)})
 
 
@@ -132,6 +134,7 @@ def expand(shift_id):  # type: ignore[no-untyped-def]
         hospital_id=current_hospital_id(),
         actor_id=current_account_id(),
     )
+    flush_notifications(session)  # entrega as ofertas do novo batch na hora
     return jsonify(
         {
             "shift": shift_view(result["shift"]),

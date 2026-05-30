@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from flask import Blueprint, jsonify, request
 
+from app.api.notify import flush_notifications
 from app.api.schemas import SwapDecisionIn, SwapRequestIn
 from app.api.security import current_account_id, current_hospital_id, require_role
 from app.infra.db import get_session
@@ -37,6 +38,7 @@ def create():  # type: ignore[no-untyped-def]
         assignment_id=body.assignment_id,
         to_doctor_id=body.to_doctor_id,
     )
+    flush_notifications(session)  # entrega o WhatsApp do pedido na hora (cron = fallback)
     return jsonify(result), 201
 
 
@@ -70,6 +72,7 @@ def approve(swap_id):  # type: ignore[no-untyped-def]
         actor_id=current_account_id(),
         reason=body.reason,
     )
+    flush_notifications(session)  # notifica A e B na hora
     return jsonify(result)
 
 
@@ -85,4 +88,5 @@ def reject(swap_id):  # type: ignore[no-untyped-def]
         actor_id=current_account_id(),
         reason=body.reason,
     )
+    flush_notifications(session)  # notifica A (recusa + motivo) na hora
     return jsonify(result)
