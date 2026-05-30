@@ -215,7 +215,7 @@ export default function PlantaoDetailPage() {
           </header>
 
           {/* Grid: conteúdo principal + sidebar de ofertas */}
-          <div className="mt-5 grid gap-6 md:grid-cols-[1fr_320px]">
+          <div className="mt-5 grid grid-cols-1 gap-6 md:grid-cols-[1fr_320px]">
             {/* Coluna principal */}
             <div className="flex flex-col gap-6">
               {/* Resumo */}
@@ -390,7 +390,7 @@ export default function PlantaoDetailPage() {
                                   background: statusColor(o.status),
                                 }}
                               />
-                              <span className="truncate text-ink">
+                              <span className="min-w-0 truncate text-ink">
                                 {o.doctor.name}
                               </span>
                               <span className="ml-auto shrink-0 text-xs text-muted">

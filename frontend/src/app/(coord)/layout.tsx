@@ -106,7 +106,7 @@ export default function CoordLayout({
       </aside>
 
       {/* Top bar (mobile < md) */}
-      <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-rule bg-[var(--color-paper)]/90 px-4 py-3 backdrop-blur md:hidden">
+      <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-rule bg-[var(--color-paper)]/90 px-4 py-3 backdrop-blur md:hidden">
         <div className="flex min-w-0 items-baseline gap-2">
           <span className="font-display text-lg font-extrabold tracking-[-0.02em]">
             Munin
@@ -128,7 +128,7 @@ export default function CoordLayout({
           </Link>
         </div>
       </header>
-      <nav className="sticky top-[57px] z-10 flex gap-1 overflow-x-auto border-b border-rule bg-[var(--color-surface)] px-2 py-2 md:hidden">
+      <nav className="sticky top-[57px] z-20 flex gap-1 overflow-x-auto border-b border-rule bg-[var(--color-surface)] px-2 py-2 md:hidden">
         {navItems("row")}
       </nav>
 

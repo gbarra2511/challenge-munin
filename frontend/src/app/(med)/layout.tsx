@@ -38,7 +38,7 @@ export default function MedicoLayout({
   return (
     <div className="flex min-h-dvh flex-col">
       {/* Top bar full-width; conteúdo interno centrado na coluna. */}
-      <header className="sticky top-0 z-20 border-b border-rule bg-[var(--color-paper)]/90 backdrop-blur">
+      <header className="sticky top-0 z-30 border-b border-rule bg-[var(--color-paper)]/90 backdrop-blur">
         <div className={`${CONTAINER} flex items-center justify-between gap-3 px-4 py-3`}>
           <div className="flex min-w-0 items-center gap-2.5">
             <span className="font-display text-lg font-extrabold tracking-[-0.02em]">

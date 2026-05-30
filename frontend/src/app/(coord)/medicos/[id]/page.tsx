@@ -120,7 +120,7 @@ export default function MedicoDetailPage() {
       )}
 
       {doctor && (
-        <div className="grid gap-5 md:grid-cols-[1fr_280px]">
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-[1fr_280px]">
           {/* Coluna principal */}
           <div className="flex flex-col gap-5">
             {/* Dados */}
