@@ -71,10 +71,6 @@ export default function Home() {
           </span>
         </Link>
       </div>
-
-      <p className="font-data mt-16 text-sm text-faint">
-        Hallmark · #040DC1 · #DDEAFF · #7B2FF7 · Cabinet Grotesk + Geist + JetBrains Mono
-      </p>
     </main>
   );
 }
