@@ -68,8 +68,8 @@ export function NotificationBell({ align = "end" }: { align?: "start" | "end" })
 
       {open && (
         <div
-          className={`absolute top-11 z-50 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-[var(--radius-md)] border border-rule bg-[var(--color-surface)] shadow-lg ${
-            align === "start" ? "left-0" : "right-0"
+          className={`fixed top-14 z-50 w-80 max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-[var(--radius-md)] border border-rule bg-[var(--color-surface)] shadow-lg md:absolute md:top-11 ${
+            align === "start" ? "left-3 md:left-0" : "right-3 md:right-0"
           }`}
         >
           <div className="flex items-center justify-between border-b border-rule px-4 py-2.5">
