@@ -3,7 +3,7 @@
 > Estado atual da implementação do Mini-WFM e próximos passos.
 > **Atualizar após cada feature grande. Revisar no início de cada sessão.**
 
-Última atualização: 2026-05-30 (**Deploy público no ar** — Fly (backend) + Supabase (DB) + Vercel (frontend); cron do tick ativo; smoke test ponta-a-ponta verde. Resta só o README final.)
+Última atualização: 2026-05-30 (**Todo o obrigatório concluído** — deploy público no ar (Fly+Supabase+Vercel), WhatsApp real + inline-dispatch, correções mobile, e **README de submissão**. Só restam bônus opcionais: check-in/geo, OpenAPI, Mini-Luis/copiloto LLM.)
 
 ---
 
@@ -53,7 +53,7 @@ IPv6/`::1` é do AirPlay Receiver. O frontend já aponta pra `127.0.0.1` via `.e
 | Qualidade de código + robustez | ✅ feito (CORS, N+1, error boundary, JSON.parse) |
 | Deploy público + seed | ✅ feito (Fly + Supabase + Vercel; cron do tick ativo; smoke test OK) |
 | Testes obrigatórios (5) | ✅ feito (5/5 + extras — **160/160**, 1 skip opt-in) |
-| README final | ⏳ pendente ⬅️ **gap obrigatório** |
+| README final | ✅ feito (submissão; enunciado → CHALLENGE.md; prints + Mermaid) |
 | Bônus: swap (backend atômico) | ✅ feito (transferência A→B + concorrência, 28 testes) |
 | Bônus: notificação outbox + WhatsApp (backend) | ✅ feito + **entrega real verificada** (`delivered` no sandbox; 17 testes: 7 outbox + 10 adapter) |
 | Bônus: telas de swap + sininho de notificação | ✅ feito (agenda, /trocas med+coord, NotificationBell) |
@@ -614,19 +614,17 @@ Pronta pra ser usada pelos endpoints `/auth/login` e
 
 > Estes são os próximos itens em ordem. Ao começar uma sessão, ler daqui.
 
-> 🎯 **Prioridade agora (o que move a nota /35):** todo o **obrigatório de produto/código
-> está ✅**, o **deploy público está ✅** (Fly+Supabase+Vercel) e 4 bônus polidos (ranking,
-> swap, WhatsApp real, audit). Resta **um único entregável obrigatório**:
-> 1. **README final** (passo 7) — links de prod + credenciais no topo, diagrama de arquitetura
->    (Mermaid), state machine, trade-offs, "o que faria com +1 semana", prints/GIF. O `README.md`
->    atual ainda é o **enunciado** do desafio; precisa virar o README da submissão.
+> 🎯 **Todo o obrigatório /35 está ✅** + bônus polidos (ranking explicável, swap,
+> WhatsApp real, audit). Deploy público no ar, README de submissão entregue.
 >
 > **URLs de prod:** front `https://challenge-munin-ai.vercel.app` · back
 > `https://munin-backend.fly.dev`. Logins: `coordenadora@hospital.com` /
 > `medico@hospital.com` (senha `123456`).
 >
-> Opcionais depois do README: WhatsApp real em prod (setar `TWILIO_*` no Fly) e
-> bônus AI (Mini-Luis / copiloto, passo 8).
+> **Só sobram bônus opcionais** (se houver tempo/vontade): check-in com
+> geolocalização (Tier 2), OpenAPI/Swagger (Tier 2), Mini-Luis / copiloto LLM
+> (Tier 3). Antes da call: re-`join` no sandbox do Twilio (expira 72h) e,
+> se quiser estado limpo, rodar o `POST /admin/seed`.
 
 ### 1. Auth + CRUD (Dia 2) ✅ 2026-05-24
 - [x] Hashing de senha com bcrypt em `app/infra/hashing.py` ✅ 2026-05-23
@@ -711,7 +709,9 @@ Pronta pra ser usada pelos endpoints `/auth/login` e
   estados reais (open/offering/accepted/needs_attention). Usa os serviços
   reais (`open_offers`/`accept_offer`) → gera audit events (timeline povoada).
   Credenciais: `coordenadora@hospital.com` / `medico@hospital.com` (`123456`).
-- [ ] README com link, credenciais, diagramas, decisões, prints/GIF
+- [x] README com link, credenciais, diagramas, decisões, prints/GIF ✅ 2026-05-30
+  (enunciado original movido p/ `CHALLENGE.md`; README de submissão com arquitetura/
+  ER/state machine em Mermaid, concorrência, ranking, deploy, trade-offs, 5 prints)
 
 ### 8. Bônus extra (se houver tempo)
 - [ ] Mini-Luis: chat LLM com tool calling (`claude-haiku-4-5-20251001`)
