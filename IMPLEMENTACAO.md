@@ -3,7 +3,7 @@
 > Estado atual da implementação do Mini-WFM e próximos passos.
 > **Atualizar após cada feature grande. Revisar no início de cada sessão.**
 
-Última atualização: 2026-05-26 (WhatsApp real **entregue e verificado** ponta-a-ponta — Twilio sandbox, `delivered`; testes do adapter + `.env` auto-carregado)
+Última atualização: 2026-05-30 (**Deploy público no ar** — Fly (backend) + Supabase (DB) + Vercel (frontend); cron do tick ativo; smoke test ponta-a-ponta verde. Resta só o README final.)
 
 ---
 
@@ -51,7 +51,7 @@ IPv6/`::1` é do AirPlay Receiver. O frontend já aponta pra `127.0.0.1` via `.e
 | Endpoints faltantes (cancel, expand, offers) | ✅ feito |
 | Frontend (Hallmark + telas) | ✅ feito (Dias 4–6: auth + todas as telas + ações completas) |
 | Qualidade de código + robustez | ✅ feito (CORS, N+1, error boundary, JSON.parse) |
-| Deploy público + seed | ⏳ pendente ⬅️ **maior gap obrigatório** (pesa em "Produto" da rubrica) |
+| Deploy público + seed | ✅ feito (Fly + Supabase + Vercel; cron do tick ativo; smoke test OK) |
 | Testes obrigatórios (5) | ✅ feito (5/5 + extras — **160/160**, 1 skip opt-in) |
 | README final | ⏳ pendente ⬅️ **gap obrigatório** |
 | Bônus: swap (backend atômico) | ✅ feito (transferência A→B + concorrência, 28 testes) |
@@ -62,6 +62,60 @@ IPv6/`::1` é do AirPlay Receiver. O frontend já aponta pra `127.0.0.1` via `.e
 ---
 
 ## Feito
+
+### Inline-dispatch de notificação + correções de responsividade mobile (2026-05-30)
+
+Dois ajustes pós-deploy, ambos **verificados em prod** (headless 390px + Twilio).
+
+- **WhatsApp instantâneo (inline-dispatch).** Notificação de swap/oferta só
+  chegava no próximo `/jobs/tick` (cron 5min, que ainda atrasa no GitHub
+  Actions). `flush_notifications` (novo `app/api/notify.py`) drena o outbox logo
+  após request/approve/reject de swap e abrir/ampliar ofertas, via
+  `dispatch_pending_safe` (best-effort — erro não quebra a request; cron segue
+  como fallback durável; `SKIP LOCKED` evita envio duplo). Não toca em
+  accept/decline (não notificam + caminho crítico de concorrência). Verificado em
+  prod: oferta → notificação `sent`/`attempts=1` **sem** tick.
+- **Mobile (auditado a 390px em todas as telas via Playwright).** Detalhe do
+  plantão e de médico **cortavam os cards**: grid só com `md:grid-cols-[1fr_Npx]`
+  virava coluna `auto` (max-content) no mobile → `grid-cols-1` resolve (desktop
+  intacto). `min-w-0` nos nomes truncados (RankingCard + lista de ofertas). Sino:
+  dropdown `z-50` preso no header `z-10` ficava **atrás da barra de abas** (nav
+  irmã z-10, posterior no DOM) → header `z-30` / nav `z-20`; e o painel
+  `absolute right-0` **vazava pela esquerda** no mobile → `fixed` à direita da
+  viewport (md+ volta a ancorar no sino). Telas do médico: 0 overflow.
+
+### Deploy público — Fly (backend) + Supabase (DB) + Vercel (frontend) (2026-05-30)
+
+Fecha o maior gap obrigatório. Stack pública no ar, cron do tick ativo, smoke
+test ponta-a-ponta verde.
+
+- **Backend → Fly.io** — `https://munin-backend.fly.dev`. `Dockerfile` (uv +
+  gunicorn `app:create_app`), `.dockerignore`, `fly.toml` com `release_command`
+  rodando `alembic upgrade head`. 1 máquina `shared-cpu-1x`/256MB, scale-to-zero
+  (~US$2/mês). Pra hibernar: `fly scale count 0 -a munin-backend`; pra zerar:
+  `fly apps destroy munin-backend`.
+- **DB → Supabase** (Postgres 17, `sa-east-1`): conexão via **Session pooler**
+  (porta 5432, IPv4 — a direta é só IPv6 no free; a transaction pool/6543
+  quebraria prepared statements do psycopg3). `DATABASE_URL` com scheme
+  `postgresql+psycopg://` e senha URL-encoded. Secrets via `fly secrets`.
+- **Frontend → Vercel** — `https://challenge-munin-ai.vercel.app`. Import do
+  GitHub, **root `frontend/`**, `NEXT_PUBLIC_API_URL` → Fly. Auto-deploy a cada push.
+- **🐛 Pego no 1º deploy:** `migrations/env.py` passava a `DATABASE_URL` pelo
+  `ConfigParser` do alembic (`set_main_option`), que interpola `%` — a senha
+  URL-encoded (`%40` = `@`) quebrava com "invalid interpolation syntax".
+  Corrigido criando o engine **direto** da env var (fallback pro `alembic.ini`).
+- **Cron do tick reativado** (`tick.yml` `*/5`): secrets `API_URL`/`TICK_SECRET`
+  no GitHub. Avança pipeline + drena outbox, e mantém Fly+Supabase acordados
+  (mata o pause de 7 dias do Supabase free).
+- **Smoke test:** `/health` 200, seed (1 coord + 30 médicos + 10 plantões),
+  login coord/médico, `/me/offers`, `/jobs/tick` (200 c/ auth · 401 sem), CORS
+  (allow no Vercel · bloqueia outros), front Vercel 200.
+- **WhatsApp real LIGADO em prod** (2026-05-30): `TWILIO_*`+`MUNIN_DEMO_PHONE`
+  setados via `fly secrets` (importados do `.env` com `python-dotenv`, sem expor
+  valores); re-seed aponta coord+médico-demo pro celular real; **`delivered`
+  verificado no Twilio (3 ofertas)**. ⚠️ Sandbox expira em **72h** → re-`join`
+  antes da avaliação (senão volta a falhar com 63015 mesmo com número correto).
+- **Próximo:** README final (passo 7) — agora o único gap obrigatório.
 
 ### WhatsApp real entregue + testes do adapter + `.env` auto-carregado (2026-05-26)
 
@@ -561,16 +615,18 @@ Pronta pra ser usada pelos endpoints `/auth/login` e
 > Estes são os próximos itens em ordem. Ao começar uma sessão, ler daqui.
 
 > 🎯 **Prioridade agora (o que move a nota /35):** todo o **obrigatório de produto/código
-> está ✅** e 4 bônus polidos (ranking, swap, WhatsApp real, audit). Faltam só os **dois
-> entregáveis obrigatórios de fechamento** — sem eles a rubrica "Produto" e "README" ficam
-> capadas:
-> 1. **Deploy público** (passo 6) — front (Vercel) + back (Fly.io/Railway) + DB (Supabase/Neon)
->    + reativar o cron do tick. É o maior ganho de nota disponível.
-> 2. **README final** (passo 7) — links de prod + credenciais no topo, diagrama de arquitetura
+> está ✅**, o **deploy público está ✅** (Fly+Supabase+Vercel) e 4 bônus polidos (ranking,
+> swap, WhatsApp real, audit). Resta **um único entregável obrigatório**:
+> 1. **README final** (passo 7) — links de prod + credenciais no topo, diagrama de arquitetura
 >    (Mermaid), state machine, trade-offs, "o que faria com +1 semana", prints/GIF. O `README.md`
 >    atual ainda é o **enunciado** do desafio; precisa virar o README da submissão.
 >
-> Bônus AI (Mini-Luis / copiloto, passo 8) só depois desses dois.
+> **URLs de prod:** front `https://challenge-munin-ai.vercel.app` · back
+> `https://munin-backend.fly.dev`. Logins: `coordenadora@hospital.com` /
+> `medico@hospital.com` (senha `123456`).
+>
+> Opcionais depois do README: WhatsApp real em prod (setar `TWILIO_*` no Fly) e
+> bônus AI (Mini-Luis / copiloto, passo 8).
 
 ### 1. Auth + CRUD (Dia 2) ✅ 2026-05-24
 - [x] Hashing de senha com bcrypt em `app/infra/hashing.py` ✅ 2026-05-23
@@ -641,12 +697,12 @@ Pronta pra ser usada pelos endpoints `/auth/login` e
 - [x] `/perfil` — nova tab: nome, phone, hospitais, specialties, indisponibilidades
 - [x] Tab bar inferior: adicionar aba "Perfil" com ícone ◎
 
-### 6. Deploy
-- [ ] Backend → Fly.io (Dockerfile + `fly launch`)
-- [ ] Frontend → Vercel
-- [ ] DB → Supabase
-- [ ] Configurar secrets `API_URL` e `TICK_SECRET` no GitHub
-- [ ] **Reativar cron do `tick.yml`** (descomentar bloco `schedule:`)
+### 6. Deploy ✅ 2026-05-30
+- [x] Backend → Fly.io (`munin-backend.fly.dev`; Dockerfile + fly.toml + release_command)
+- [x] Frontend → Vercel (`challenge-munin-ai.vercel.app`; root `frontend/`)
+- [x] DB → Supabase (Postgres 17, `sa-east-1`, session pooler)
+- [x] Configurar secrets `API_URL` e `TICK_SECRET` no GitHub
+- [x] **Reativar cron do `tick.yml`** (`schedule: */5` ativo)
 
 ### 7. Seed + README
 - [x] `POST /admin/seed` (guard `ADMIN_SECRET`) ✅ 2026-05-24 — idempotente
