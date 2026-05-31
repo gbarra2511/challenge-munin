@@ -241,7 +241,7 @@ if now > offer.expires_at:      raise Gone(410, 'offer_expired')
 # INSERT assignment active, shift→accepted, version += 1, audit
 ```
 
-> **⚠️ Ordem de lock: `shift → offer` (corrigi o plano ingênuo `offer → shift`).**
+> **⚠️ Ordem de lock: `shift → offer`.**
 > Travar a oferta primeiro **deadlocka**: o `UPDATE ... superseded` de um aceite
 > precisa travar a oferta que o aceite concorrente já segura. Com o **shift**
 > como primeiro lock, ele vira o ponto único de serialização do plantão — quem
@@ -303,7 +303,7 @@ provedor na mesma transação):
 ponta. Sem credenciais, o backend usa `NullNotifier` (loga, não envia) — dev e
 testes nunca tocam a rede.
 
-> **Caveats documentados (honestidade vale ponto):** o **sandbox do Twilio expira
+> **Caveats documentados:** o **sandbox do Twilio expira
 > em ~72h** — para a avaliação, re-envie o `join <código>` antes de abrir o link.
 > E o WhatsApp identifica celular **brasileiro sem o 9º dígito** (com ele → erro
 > 63015). Sair disso de vez exigiria um WhatsApp Business sender aprovado (fora do
@@ -315,6 +315,8 @@ testes nunca tocam a rede.
 
 Ao ofertar, os médicos são ordenados por um **score 0–100 explicável** (bônus
 Tier 1), com 4 fatores ponderados:
+
+**NOTE QUE: especialistas tem prioridade, entretando dependendo do plantão, é melhor ter um não especialista do que não ter um médico**
 
 | Fator | Peso | Direção |
 |---|---|---|
@@ -405,8 +407,6 @@ concorrência usa conexões reais com `TRUNCATE`). Os **5 obrigatórios** e mais
 cd backend && uv run pytest          # precisa de um Postgres local (docker compose up -d)
 ```
 
-🐛 *Bug real pego pelos testes:* `func.avg()` do Postgres devolve `Decimal` →
-`TypeError` no cálculo do score; corrigido coagindo para `float` na origem.
 
 ---
 
@@ -459,7 +459,7 @@ Vercel / GitHub Actions — **nunca no repo** (`.env` é gitignored).
 
 ## Decisões e trade-offs
 
-- **Lock `shift → offer`** (corrigido do plano `offer → shift`) — elimina o
+- **Lock `shift → offer`**  — elimina o
   deadlock entre dois aceites; o shift vira o ponto único de serialização.
 - **Pessimista > otimista** aqui — contenção rara, lock de milissegundos, mais
   fácil de raciocinar; constraint única como defesa em profundidade.
@@ -496,8 +496,7 @@ Vercel / GitHub Actions — **nunca no repo** (`.env` é gitignored).
 - ✅ **Tier 1 — Notificação real** (WhatsApp via Twilio, entrega verificada)
 - ✅ **Tier 1 — Swap requests** (troca com aprovação da coordenação, atômica)
 - ✅ **Tier 2 — Audit log** (toda transição vira evento imutável → timeline)
-- ⬜ Tier 2 — Check-in/geolocalização · OpenAPI · Tier 3 — agentes LLM
-
+  
 ---
 
 ## Estrutura do repositório
@@ -519,5 +518,4 @@ Vercel / GitHub Actions — **nunca no repo** (`.env` é gitignored).
 
 ---
 
-<sub>Feito para o Challenge MuninAI. Commits pequenos e descritivos — o `git log`
-conta a história, do esqueleto ao deploy.</sub>
+<sub>Feito para o Challenge MuninAI.
