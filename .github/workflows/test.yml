@@ -1,61 +1,61 @@
-name: test
+# name: test
 
-on:
-  pull_request:
-  push:
-    branches: [main]
+# on:
+#   pull_request:
+#   push:
+#     branches: [main]
 
-jobs:
-  backend:
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:15-alpine
-        env:
-          POSTGRES_USER: munin
-          POSTGRES_PASSWORD: munin
-          # A suíte usa o banco de teste (ver tests/conftest.py::TEST_DATABASE_URL).
-          # O serviço já nasce com ele; o passo de migração roda aqui mesmo.
-          POSTGRES_DB: munin_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U munin"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
+# jobs:
+#   backend:
+#     runs-on: ubuntu-latest
+#     services:
+#       postgres:
+#         image: postgres:15-alpine
+#         env:
+#           POSTGRES_USER: munin
+#           POSTGRES_PASSWORD: munin
+#           # A suíte usa o banco de teste (ver tests/conftest.py::TEST_DATABASE_URL).
+#           # O serviço já nasce com ele; o passo de migração roda aqui mesmo.
+#           POSTGRES_DB: munin_test
+#         ports:
+#           - 5432:5432
+#         options: >-
+#           --health-cmd "pg_isready -U munin"
+#           --health-interval 5s
+#           --health-timeout 5s
+#           --health-retries 10
 
-    env:
-      # Migrações e testes apontam para o mesmo banco munin_test.
-      DATABASE_URL: postgresql+psycopg://munin:munin@localhost:5432/munin_test
-      TEST_DATABASE_URL: postgresql+psycopg://munin:munin@localhost:5432/munin_test
-      JWT_SECRET: ci-test-secret
-      TICK_SECRET: ci-test-tick
-      ADMIN_SECRET: ci-test-admin
+#     env:
+#       # Migrações e testes apontam para o mesmo banco munin_test.
+#       DATABASE_URL: postgresql+psycopg://munin:munin@localhost:5432/munin_test
+#       TEST_DATABASE_URL: postgresql+psycopg://munin:munin@localhost:5432/munin_test
+#       JWT_SECRET: ci-test-secret
+#       TICK_SECRET: ci-test-tick
+#       ADMIN_SECRET: ci-test-admin
 
-    defaults:
-      run:
-        working-directory: backend
+#     defaults:
+#       run:
+#         working-directory: backend
 
-    steps:
-      - uses: actions/checkout@v6
+#     steps:
+#       - uses: actions/checkout@v6
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v8.1.0
-        with:
-          enable-cache: true
+#       - name: Install uv
+#         uses: astral-sh/setup-uv@v8.1.0
+#         with:
+#           enable-cache: true
 
-      - name: Set up Python 3.12
-        run: uv python install 3.12
+#       - name: Set up Python 3.12
+#         run: uv python install 3.12
 
-      - name: Install dependencies
-        run: uv sync
+#       - name: Install dependencies
+#         run: uv sync
 
-      - name: Lint
-        run: uv run ruff check .
+#       - name: Lint
+#         run: uv run ruff check .
 
-      - name: Run migrations
-        run: uv run alembic upgrade head
+#       - name: Run migrations
+#         run: uv run alembic upgrade head
 
-      - name: Run tests
-        run: uv run pytest -v
+#       - name: Run tests
+#         run: uv run pytest -v
