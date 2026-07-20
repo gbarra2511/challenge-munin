@@ -1,23 +1,23 @@
-name: tick
+# name: tick
 
-# Disparador do pipeline de ofertas + dreno do outbox de notificação
-# (WhatsApp). Roda a cada 5 minutos chamando o endpoint protegido do backend.
-# Ver PLANO.md §7 (pipeline); o /jobs/tick também faz o dispatch das notificações.
+# # Disparador do pipeline de ofertas + dreno do outbox de notificação
+# # (WhatsApp). Roda a cada 5 minutos chamando o endpoint protegido do backend.
+# # Ver PLANO.md §7 (pipeline); o /jobs/tick também faz o dispatch das notificações.
 
-on:
-  # Backend deployado (Fly) + secrets API_URL/TICK_SECRET no repo → cron ativo.
-  # Roda a cada 5 min: avança o pipeline de ofertas e drena o outbox de
-  # notificação. Também mantém Fly e Supabase acordados (evita o pause do free).
-  schedule:
-    - cron: "*/5 * * * *"
-  workflow_dispatch:
+# on:
+#   # Backend deployado (Fly) + secrets API_URL/TICK_SECRET no repo → cron ativo.
+#   # Roda a cada 5 min: avança o pipeline de ofertas e drena o outbox de
+#   # notificação. Também mantém Fly e Supabase acordados (evita o pause do free).
+#   schedule:
+#     - cron: "*/5 * * * *"
+#   workflow_dispatch:
 
-jobs:
-  tick:
-    runs-on: ubuntu-latest
-    steps:
-      - name: POST /jobs/tick
-        run: |
-          curl -fsS -X POST \
-            -H "Authorization: Bearer ${{ secrets.TICK_SECRET }}" \
-            "${{ secrets.API_URL }}/jobs/tick"
+# jobs:
+#   tick:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: POST /jobs/tick
+#         run: |
+#           curl -fsS -X POST \
+#             -H "Authorization: Bearer ${{ secrets.TICK_SECRET }}" \
+#             "${{ secrets.API_URL }}/jobs/tick"
